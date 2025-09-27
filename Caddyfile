@@ -1,0 +1,15 @@
+# Reverse Proxy from Caddy to development servers
+#
+# Port: Service
+# =============
+# 4400: Caddy
+# 4401: React (Vite)
+# 4402: FastAPI
+
+http://127.0.0.1:4400, http://localhost:4400, :4400 {
+	reverse_proxy /api* http://localhost:4402
+	reverse_proxy /docs http://localhost:4402
+	reverse_proxy /docs/* http://localhost:4402
+	reverse_proxy /openapi.json http://localhost:4402
+	reverse_proxy * http://localhost:4401
+}
