@@ -42,7 +42,14 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4400"],  # Frontend URL
+    allow_origins=[
+        "http://localhost:4400",
+        "http://localhost:4401",
+        "http://localhost:8081",
+        "http://localhost:19006",
+        "http://127.0.0.1:4400",
+        "http://127.0.0.1:4401",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
