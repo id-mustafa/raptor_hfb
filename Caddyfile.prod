@@ -1,0 +1,17 @@
+// Caddyfile.prod
+{
+  admin off
+  auto_https off
+}
+
+:{$PORT} {
+  handle_path /api/* {
+    reverse_proxy 127.0.0.1:4402
+  }
+  handle {
+    root * /app/frontend/dist
+    try_files {path} /index.html
+    file_server
+    encode gzip
+  }
+}
