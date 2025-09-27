@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useMemo, useCallback } from "react";
-import { View, Dimensions, ImageSourcePropType } from "react-native";
+import { View, Dimensions, ImageSourcePropType, Pressable } from "react-native";
 import Matter from "matter-js";
 import { Stack, useRouter } from "expo-router";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { ChevronLeft } from "lucide-react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   SharedValue,
@@ -13,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { triggerSelectionHaptic } from "@/utils/Vibration";
+import { THEME } from "@/lib/theme";
 
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
@@ -262,7 +264,14 @@ export default function Lobby() {
 
   return (
     <View className="flex-1 items-center justify-between bg-background">
-      <Stack.Screen options={{ title: `Lobby (${players.length}/5 players)` }} />
+      <Stack.Screen options={{ 
+        title: `Lobby (${players.length}/5 players)`,
+        headerLeft: () => (
+          <Pressable onPress={() => router.push('/home')}>
+            <ChevronLeft size={24} color={THEME.dark.secondary} />
+          </Pressable>
+        )
+      }} />
 
       <GestureDetector gesture={panGesture}>
         <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - HEIGHT_OFFSET }}>

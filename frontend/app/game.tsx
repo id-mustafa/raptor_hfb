@@ -1,7 +1,8 @@
 import { Stack, useRouter } from "expo-router";
-import { View, Image } from "react-native";
+import { View, Image, Pressable } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { ChevronLeft } from "lucide-react-native";
 import {
   Card,
   CardHeader,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { useMemo, useEffect, useState } from "react";
 import { Trophy } from "lucide-react-native"; 
+import { THEME } from "@/lib/theme";
 
 export default function Game() {
   const router = useRouter();
@@ -78,6 +80,9 @@ export default function Game() {
               </View>
             </View>
           ),
+          headerLeft: () => (
+            <View className="px-2"/>
+          )
         }}
       />
 

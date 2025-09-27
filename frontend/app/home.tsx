@@ -3,6 +3,7 @@ import { ScrollView, View, Pressable, RefreshControl } from "react-native";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { ChevronLeft } from "lucide-react-native";
 import { useAuth } from "@/utils/AuthProvider";
 import { CreateLobbyCard } from "@/components/ui/create-lobby-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Icon } from "@/components/ui/icon";
 import { Check, X } from "lucide-react-native";
 import { joinRoom } from "@/api";
 import { navigate } from "expo-router/build/global-state/routing";
+import { THEME } from "@/lib/theme";
 
 const USE_DUMMY_DATA = true;
 
@@ -162,7 +164,14 @@ export default function Home() {
     >
       <View className="flex-1 items-center gap-6 p-4 flex flex-col">
         <Stack.Screen
-          options={{ title: `Welcome${username ? `, ${username}` : ""}` }}
+          options={{ 
+            title: `Welcome${username ? `, ${username}` : ""}`,
+            headerLeft: () => (
+              <Pressable onPress={() => router.push('/')}>
+                <ChevronLeft size={24} color={THEME.dark.secondary} />
+              </Pressable>
+            )
+          }}
         />
 
         {loading && !USE_DUMMY_DATA && (
