@@ -95,4 +95,4 @@ RUN echo ":$PORT {\n\
 EXPOSE $PORT
 
 # Start command
-CMD ["honcho", "start", "-f", "Procfile.prod"]
+CMD ["honcho", "start"]
