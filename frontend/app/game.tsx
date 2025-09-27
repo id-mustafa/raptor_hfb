@@ -1,20 +1,34 @@
-import { Stack, useRouter } from "expo-router";
-import { View, Image, Pressable } from "react-native";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { View, Image, Pressable, BackHandler } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { ChevronLeft } from "lucide-react-native";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import { useMemo, useEffect, useState } from "react";
-import { Trophy } from "lucide-react-native"; 
-import { THEME } from "@/lib/theme";
+import { useMemo, useCallback } from "react";
+import { Trophy } from "lucide-react-native";
 
 export default function Game() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.push("/home");
+    return true;
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
+
+      return () => subscription.remove();
+    }, [handleBack])
+  );
 
   const players: any[] = useMemo(
     () => [
@@ -27,25 +41,6 @@ export default function Game() {
     []
   );
 
-  // elapsed timer setup (unchanged) ...
-  const [elapsed, setElapsed] = useState(0);
-  const startTime = useMemo(() => Date.now(), []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startTime]);
-
-  const formatElapsed = (secs: number) => {
-    const m = Math.floor(secs / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (secs % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
   const formatDate = () =>
     new Date().toLocaleDateString("en-US", {
       month: "long",
@@ -55,7 +50,7 @@ export default function Game() {
   const rankColors = ["bg-yellow-600", "bg-gray-400", "bg-amber-700"];
 
   return (
-    <View className="flex-1 gap-4 p-4 bg-background">
+    <View className="flex-1 gap-4 px-4 bg-background">
       {/* Custom Header */}
       <Stack.Screen
         options={{
@@ -71,17 +66,13 @@ export default function Game() {
                   </Text>
                 </View>
               </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs text-secondary">{formatDate()}</Text>
-                <Text className="mx-1 text-xs text-secondary">•</Text>
-                <Text className="text-xs text-secondary">
-                  {formatElapsed(elapsed)}
-                </Text>
-              </View>
+
+              <Text className="text-xs text-secondary">{formatDate()}</Text>
+
             </View>
           ),
           headerLeft: () => (
-            <View className="px-2"/>
+            <View className="px-2" />
           )
         }}
       />
@@ -158,7 +149,7 @@ export default function Game() {
       </Button>
       <Button
         onPress={() => router.push("/recap")}
-        className="w-full mb-16 -mt-2"
+        className="w-full mb-2 -mt-2"
         variant="ghost"
       >
         <Text>End Game</Text>

@@ -1,9 +1,9 @@
-import { Stack, useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { BackHandler, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import Timer from '@/components/ui/timer';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Animated, {
   Easing,
   interpolate,
@@ -26,6 +26,23 @@ const QUESTION_DURATION = 5000; // todo: change to 20000 for prod
 
 export default function Question() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.push("/game");
+    return true;
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
+
+      return () => subscription.remove();
+    }, [handleBack])
+  );
+
   const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasNavigated = useRef(false);
 
@@ -44,7 +61,7 @@ export default function Question() {
   }, [selectedIndex]);
 
 
-   const { points } = useAuth();
+  const { points } = useAuth();
 
   const sliderValue = useSharedValue(Math.min(10, points));
   const sliderMin = useSharedValue(0);

@@ -1,8 +1,8 @@
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
+import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { BackHandler, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Animated, {
   Easing,
   interpolate,
@@ -18,6 +18,23 @@ import { THEME } from '@/lib/theme';
 
 export default function BetResult() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.push("/game");
+    return true;
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
+
+      return () => subscription.remove();
+    }, [handleBack])
+  );
+
   const { points, setPoints } = useAuth();
   const { selection, bet } = useLocalSearchParams<{ selection?: string; bet?: string }>();
   const wager = bet ? parseInt(bet, 10) : 0;

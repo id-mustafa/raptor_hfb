@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { useAuth } from '@/utils/AuthProvider'; // << unify import path
+import { useAuth } from '@/utils/AuthProvider';
 
 export default function Login() {
   const { setUsername } = useAuth();
@@ -45,7 +45,7 @@ export default function Login() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="off"
-              // ensure your Input forwards these to TextInput under the hood
+            // ensure your Input forwards these to TextInput under the hood
             />
           </View>
 

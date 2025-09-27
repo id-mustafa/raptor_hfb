@@ -1,4 +1,4 @@
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { ScrollView, View, Pressable, RefreshControl } from "react-native";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Check, X } from "lucide-react-native";
 import { joinRoom } from "@/api";
 import { navigate } from "expo-router/build/global-state/routing";
 import { THEME } from "@/lib/theme";
+import { BackHandler } from "react-native";
 
 const USE_DUMMY_DATA = true;
 
@@ -27,6 +28,19 @@ type RoomLike = {
 
 export default function Home() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.push("/");
+    return true;
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener("hardwareBackPress", handleBack);
+      return () =>
+        subscription.remove();
+    }, [handleBack])
+  );
 
   const {
     username,
@@ -164,7 +178,7 @@ export default function Home() {
     >
       <View className="flex-1 items-center gap-6 p-4 flex flex-col">
         <Stack.Screen
-          options={{ 
+          options={{
             title: `Welcome${username ? `, ${username}` : ""}`,
             headerLeft: () => (
               <Pressable onPress={() => router.push('/')}>
@@ -222,7 +236,7 @@ export default function Home() {
         </Card>
 
         {/* Friend Requests */}
-        <Card className="w-full max-w-md mb-12">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Friend Requests</CardTitle>
           </CardHeader>

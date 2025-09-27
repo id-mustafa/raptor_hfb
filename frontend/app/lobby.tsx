@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { View, Dimensions, ImageSourcePropType, Pressable } from "react-native";
 import Matter from "matter-js";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { ChevronLeft } from "lucide-react-native";
@@ -15,6 +15,8 @@ import Animated, {
 
 import { triggerSelectionHaptic } from "@/utils/Vibration";
 import { THEME } from "@/lib/theme";
+
+import { BackHandler } from "react-native";
 
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
@@ -87,6 +89,22 @@ const PlayerName = React.memo<{
 
 export default function Lobby() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.push("/home");
+    return true;
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
+
+      return () => subscription.remove();
+    }, [handleBack])
+  );
 
   const players: Player[] = useMemo(
     () => [
@@ -264,7 +282,7 @@ export default function Lobby() {
 
   return (
     <View className="flex-1 items-center justify-between bg-background">
-      <Stack.Screen options={{ 
+      <Stack.Screen options={{
         title: `Lobby (${players.length}/5 players)`,
         headerLeft: () => (
           <Pressable onPress={() => router.push('/home')}>
@@ -275,7 +293,7 @@ export default function Lobby() {
 
       <GestureDetector gesture={panGesture}>
         <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - HEIGHT_OFFSET }}>
-            {players.map((p) => (
+          {players.map((p) => (
             <PlayerAvatar key={p.id} position={animatedPositions[p.id]} source={p.avatar} />
           ))}
           {players.map((p) => (
@@ -285,14 +303,14 @@ export default function Lobby() {
         </View>
       </GestureDetector>
 
-     <View className="flex flex-col gap-2">
-      <Button variant="ghost" onPress={setPlayers} className="w-64">
-        <Text className="font-normal">reset positions</Text>
-      </Button>
+      <View className="flex flex-col gap-2">
+        <Button variant="ghost" onPress={setPlayers} className="w-64">
+          <Text className="font-normal">reset positions</Text>
+        </Button>
 
-      <Button onPress={() => router.push("/game")} className="w-64 mb-20">
-        <Text>Start Game</Text>
-      </Button>
+        <Button onPress={() => router.push("/game")} className="w-64 mb-20">
+          <Text>Start Game</Text>
+        </Button>
       </View>
     </View>
   );
