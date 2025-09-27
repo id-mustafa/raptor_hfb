@@ -19,9 +19,10 @@ import { SelectableCard } from '@/components/ui/selectable-card';
 import { Slider } from 'react-native-awesome-slider';
 import { THEME } from '@/lib/theme';
 import { ReText } from 'react-native-redash';
+import { useAuth } from '@/utils/AuthProvider';
 
 const PREP_DURATION = 1000; // todo: change to 5000 for prod
-const QUESTION_DURATION = 10000; // todo: change to 20000 for prod
+const QUESTION_DURATION = 5000; // todo: change to 20000 for prod
 
 export default function Question() {
   const router = useRouter();
@@ -43,9 +44,11 @@ export default function Question() {
   }, [selectedIndex]);
 
 
-  const sliderValue = useSharedValue(0);
+   const { points } = useAuth();
+
+  const sliderValue = useSharedValue(Math.min(10, points));
   const sliderMin = useSharedValue(0);
-  const sliderMax = useSharedValue(100);
+  const sliderMax = useSharedValue(Math.min(points, 100));
   const isDragging = useSharedValue(0);
 
   const animatedText = useDerivedValue(() => {
@@ -89,13 +92,16 @@ export default function Question() {
       navigationTimerRef.current = setTimeout(() => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
-        
-        const finalIndex = selectedIndexRef.current; 
+
+        const finalIndex = selectedIndexRef.current;
 
         if (finalIndex !== null) {
           router.push({
             pathname: '/answer',
-            params: { selection: finalIndex.toString() },
+            params: {
+              selection: finalIndex?.toString() ?? undefined,
+              bet: Math.round(sliderValue.value).toString(),
+            },
           });
         } else {
           router.push('/answer');
@@ -116,7 +122,7 @@ export default function Question() {
   const handleManualSubmit = () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
-    
+
     if (navigationTimerRef.current) {
       clearTimeout(navigationTimerRef.current);
     }

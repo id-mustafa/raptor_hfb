@@ -42,6 +42,8 @@ type AuthContextType = {
   acceptRequest: (from: string, to: string) => Promise<void>;
   declineRequest: (from: string, to: string) => Promise<void>;
   getAllUsers: () => Promise<User[]>;
+  points: number;
+  setPoints: (newPoints: number) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [points, setPoints] = useState<number>(100);
 
   const fetchAll = useCallback(
     async (name: string) => {
@@ -210,6 +213,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       acceptRequest: acceptRequestHandler,
       declineRequest: declineRequestHandler,
       getAllUsers,
+      points,
+      setPoints,
     }),
     [
       username,
@@ -227,6 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendRequest,
       acceptRequestHandler,
       declineRequestHandler,
+      points,
+      setPoints,
     ],
   );
 

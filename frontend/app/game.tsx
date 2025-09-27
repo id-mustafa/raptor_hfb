@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { useMemo, useEffect, useState } from "react";
+import { Trophy } from "lucide-react-native"; 
 
 export default function Game() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function Game() {
     []
   );
 
-  // Track elapsed time since screen first rendered
+  // elapsed timer setup (unchanged) ...
   const [elapsed, setElapsed] = useState(0);
   const startTime = useMemo(() => Date.now(), []);
 
@@ -35,7 +36,6 @@ export default function Game() {
     return () => clearInterval(interval);
   }, [startTime]);
 
-  // Format elapsed as mm:ss
   const formatElapsed = (secs: number) => {
     const m = Math.floor(secs / 60)
       .toString()
@@ -44,12 +44,13 @@ export default function Game() {
     return `${m}:${s}`;
   };
 
-  // Format current date
   const formatDate = () =>
     new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
     });
+
+  const rankColors = ["bg-yellow-600", "bg-gray-400", "bg-amber-700"];
 
   return (
     <View className="flex-1 gap-4 p-4 bg-background">
@@ -57,7 +58,7 @@ export default function Game() {
       <Stack.Screen
         options={{
           headerTitle: () => (
-            <View className="flex-col">
+            <View className="flex-col mt-2">
               <View className="flex-row items-center">
                 <Text className="text-lg font-bold text-foreground">
                   Lakers vs. Celtics
@@ -68,10 +69,8 @@ export default function Game() {
                   </Text>
                 </View>
               </View>
-              <View className="flex-row items-center mt-0.5">
-                <Text className="text-xs text-secondary">
-                  {formatDate()}
-                </Text>
+              <View className="flex-row items-center">
+                <Text className="text-xs text-secondary">{formatDate()}</Text>
                 <Text className="mx-1 text-xs text-secondary">•</Text>
                 <Text className="text-xs text-secondary">
                   {formatElapsed(elapsed)}
@@ -89,17 +88,14 @@ export default function Game() {
         </CardHeader>
         <CardContent>
           <View className="flex-row items-center justify-between">
-            {/* Team 1 avatar */}
             <Image
               source={require("@/assets/images/team1.jpg")}
               className="h-16 w-16 rounded-full"
             />
-            {/* Score + Quarter */}
             <View className="items-center">
               <Text className="text-2xl font-bold text-foreground">0 - 0</Text>
               <Text className="text-sm text-secondary">Q1</Text>
             </View>
-            {/* Team 2 avatar */}
             <Image
               source={require("@/assets/images/team2.jpg")}
               className="h-16 w-16 rounded-full"
@@ -121,12 +117,23 @@ export default function Game() {
                 key={player.id}
                 className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
               >
-                {/* Rank */}
-                <Text className="w-6 text-sm font-bold text-secondary">
-                  {index + 1}
-                </Text>
+                {/* Rank: trophy for top 3, number otherwise */}
+                {index < 3 ? (
+                  <View
+                    className={`w-8 h-8 items-center justify-center rounded-full ${rankColors[index]}`}
+                  >
+                    <Trophy size={16} color="#fff" />
+                  </View>
+                ) : (
+                  <View className="w-8 h-8 items-center justify-center rounded-full bg-muted">
+                    <Text className="text-sm font-bold text-secondary">
+                      {index + 1}
+                    </Text>
+                  </View>
+                )}
+
                 {/* Name + Points */}
-                <View className="flex-1 flex-row justify-between">
+                <View className="flex-1 flex-row justify-between ml-4">
                   <Text className="text-base font-medium text-foreground">
                     {player.name}
                   </Text>
@@ -139,13 +146,14 @@ export default function Game() {
         </CardContent>
       </Card>
 
+
       {/* Actions */}
-      <Button onPress={() => router.push("/question")} className="w-full">
+      <Button onPress={() => router.push("/question")} className="w-full mt-auto">
         <Text>Start Question</Text>
       </Button>
       <Button
         onPress={() => router.push("/recap")}
-        className="w-full"
+        className="w-full mb-16 -mt-2"
         variant="ghost"
       >
         <Text>End Game</Text>
