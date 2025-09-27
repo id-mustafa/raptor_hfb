@@ -23,8 +23,6 @@ import { ReText } from 'react-native-redash';
 const PREP_DURATION = 1000; // todo: change to 5000 for prod
 const QUESTION_DURATION = 10000; // todo: change to 20000 for prod
 
-const AnimatedText = Animated.createAnimatedComponent(Text);
-
 export default function Question() {
   const router = useRouter();
   const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,7 +111,7 @@ export default function Question() {
         clearTimeout(navigationTimerRef.current);
       }
     };
-  }, []); // Keep empty dependency array to run only once
+  }, []);
 
   const handleManualSubmit = () => {
     if (hasNavigated.current) return;
@@ -122,7 +120,7 @@ export default function Question() {
     if (navigationTimerRef.current) {
       clearTimeout(navigationTimerRef.current);
     }
-    router.push('/answer'); // Navigate without params for a skip
+    router.push('/answer');
   };
 
   const circleStyle = useAnimatedStyle(() => ({

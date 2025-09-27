@@ -12,6 +12,8 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 
+import { triggerSelectionHaptic } from "@/utils/Vibration";
+
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
 const MAX_VELOCITY = 15;
@@ -226,6 +228,7 @@ export default function Lobby() {
         break;
       }
     }
+    triggerSelectionHaptic();
   }, []);
 
   const onDragEnd = useCallback((velocityX: number, velocityY: number) => {
@@ -233,8 +236,8 @@ export default function Lobby() {
     if (id && bodiesRef.current[id]) {
       const body = bodiesRef.current[id];
 
-      let vx = velocityX / 20;
-      let vy = velocityY / 20;
+      let vx = velocityX / 10;
+      let vy = velocityY / 10;
 
       vx = Math.max(-MAX_VELOCITY, Math.min(vx, MAX_VELOCITY));
       vy = Math.max(-MAX_VELOCITY, Math.min(vy, MAX_VELOCITY));
