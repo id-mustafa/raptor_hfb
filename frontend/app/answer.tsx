@@ -9,9 +9,12 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  useDerivedValue,
 } from 'react-native-reanimated';
 import triggerVibration from "@/utils/Vibration";
 import { useAuth } from '@/utils/AuthProvider';
+import { ReText } from "react-native-redash";
+import { THEME } from '@/lib/theme';
 
 export default function BetResult() {
   const router = useRouter();
@@ -26,7 +29,7 @@ export default function BetResult() {
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
 
   // 👇 New state for animated display
-  const [viewPoints, setViewPoints] = useState(points);
+  const animatedPoints = useSharedValue(points);
 
   useEffect(() => {
     if (betWasPlaced) {
@@ -35,10 +38,6 @@ export default function BetResult() {
         setResult(chosenResult);
         setPhase('result');
 
-        const delta = chosenResult === 'correct' ? wager : -wager;
-        const targetPoints = points + delta;
-        setPoints(targetPoints);
-
         triggerVibration();
 
         revealProgress.value = withTiming(1, {
@@ -46,20 +45,23 @@ export default function BetResult() {
           easing: Easing.out(Easing.exp),
         });
 
-        let current = points;
-        const step = delta > 0 ? 1 : -1;
-        const interval = setInterval(() => {
-          current += step;
-          setViewPoints(current);
-          if ((step > 0 && current >= targetPoints) || (step < 0 && current <= targetPoints)) {
-            clearInterval(interval);
-          }
-        }, 30); 
+        const delta = chosenResult === 'correct' ? wager : -wager;
+        const targetPoints = points + delta;
+        setPoints(targetPoints);
+
+        animatedPoints.value = withTiming(targetPoints, {
+          duration: 1000,
+          easing: Easing.out(Easing.exp),
+        });
       }, 5000);
 
       return () => clearTimeout(timer);
     }
   }, [betWasPlaced, selection, wager, setPoints, revealProgress]);
+
+  const animatedText = useDerivedValue(() => {
+    return Math.round(animatedPoints.value).toString();
+  });
 
   const circleStyle = useAnimatedStyle(() => ({
     transform: [
@@ -112,7 +114,10 @@ export default function BetResult() {
               </Text>
               <View className="flex flex-col items-center">
                 <View className="flex-row items-center gap-1">
-                  <Text className="text-4xl font-bold text-background">{viewPoints}</Text>
+                  <ReText
+                    text={animatedText}
+                    style={{ fontSize: 32, fontWeight: "bold", color: THEME.dark.background }}
+                  />
                   <Text className={`text-lg text-background`}>
                     {result === 'correct' ? `↑${wager}` : `↓${wager}`}
                   </Text>

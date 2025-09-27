@@ -1,10 +1,17 @@
-import { Stack, useRouter } from 'expo-router';
-import { ScrollView, View } from 'react-native';
-import { useMemo, useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { useAuth } from '@/utils/AuthProvider';
-import { joinRoom } from '@/api';
+import { Stack, useRouter } from "expo-router";
+import { ScrollView, View, Pressable, RefreshControl } from "react-native";
+import { useState, useMemo, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { useAuth } from "@/utils/AuthProvider";
+import { CreateLobbyCard } from "@/components/ui/create-lobby-card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { Check, X } from "lucide-react-native";
+import { joinRoom } from "@/api";
+import { navigate } from "expo-router/build/global-state/routing";
+
+const USE_DUMMY_DATA = true;
 
 type RoomLike = {
   id: number;
@@ -18,6 +25,7 @@ type RoomLike = {
 
 export default function Home() {
   const router = useRouter();
+
   const {
     username,
     friends,
@@ -30,179 +38,230 @@ export default function Home() {
     declineRequest,
   } = useAuth();
 
-  const [joiningRoomId, setJoiningRoomId] = useState<number | null>(null);
-  const [processingReq, setProcessingReq] = useState<string | null>(null); // `${requester}-accept|decline`
+  const dummyFriends = [
+    {
+      username: "Alice",
+    },
+    {
+      username: "Bob",
+    },
+    {
+      username: "Charlie",
+    },
+  ];
 
-  // Map friend username -> their room (if any)
+  const dummyRequests = [
+    { username: "David" },
+    { username: "Eve" },
+  ];
+
+  const dummyRooms: RoomLike[] = [
+    { id: 1, participants: [{ username: "Bob" }] },
+  ];
+
+  const effectiveFriends = USE_DUMMY_DATA ? dummyFriends : friends;
+  const effectiveRequests = USE_DUMMY_DATA ? dummyRequests : incomingRequests;
+  const effectiveRooms = USE_DUMMY_DATA ? dummyRooms : rooms;
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [joiningRoomId, setJoiningRoomId] = useState<number | null>(null);
+  const [processingReq, setProcessingReq] = useState<string | null>(null);
+
+  const onRefresh = useCallback(async () => {
+    if (USE_DUMMY_DATA) {
+      setRefreshing(false);
+      return;
+    }
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }, [refresh]);
+
   const friendToRoom = useMemo(() => {
     const map = new Map<string, RoomLike>();
     const pickUsernames = (room: RoomLike): string[] => {
       if (Array.isArray(room.participants)) {
-        return room.participants.map((p: any) => (typeof p === 'string' ? p : p?.username)).filter(Boolean);
+        return room.participants
+          .map((p: any) => (typeof p === "string" ? p : p?.username))
+          .filter((n): n is string => Boolean(n));
       }
       if (Array.isArray(room.users)) {
-        return room.users.map((u: any) => u?.username).filter(Boolean);
+        return room.users
+          .map((u: any) => u?.username)
+          .filter((n): n is string => Boolean(n));
       }
       if (Array.isArray(room.members)) {
-        return room.members.map((m: any) => (typeof m === 'string' ? m : m?.username)).filter(Boolean);
+        return room.members
+          .map((m: any) => (typeof m === "string" ? m : m?.username))
+          .filter((n): n is string => Boolean(n));
       }
+
       const owners: string[] = [];
       if (room.owner) owners.push(room.owner);
       if (room.host) owners.push(room.host);
-      return owners.filter(Boolean) as string[];
+      return owners;
     };
-
-    (rooms as RoomLike[]).forEach((room) => {
-      pickUsernames(room).forEach((n) => {
-        if (n) map.set(n, room);
-      });
+    (effectiveRooms as RoomLike[]).forEach((room) => {
+      pickUsernames(room).forEach((n) => n && map.set(n, room));
     });
     return map;
-  }, [rooms]);
+  }, [effectiveRooms]);
 
   const handleJoinRoom = async (roomId: number) => {
+    if (USE_DUMMY_DATA) return;
     if (!username) return;
     try {
       setJoiningRoomId(roomId);
       const ok = await joinRoom(username, roomId);
       if (ok) await refresh();
-    } catch (e) {
-      console.error('Join failed', e);
     } finally {
       setJoiningRoomId(null);
+      navigate("/lobby");
     }
   };
 
-  const handleAccept = useCallback(
-    async (fromUser: string) => {
-      if (!username) return;
-      try {
-        setProcessingReq(`${fromUser}-accept`);
-        await acceptRequest(fromUser, username); // from -> to (you)
-        await refresh();
-      } catch (e) {
-        console.error('Accept failed', e);
-      } finally {
-        setProcessingReq(null);
-      }
-    },
-    [acceptRequest, refresh, username],
-  );
+  const handleAccept = async (fromUser: string) => {
+    if (USE_DUMMY_DATA) return;
+    if (!username) return;
+    try {
+      setProcessingReq(`${fromUser}-accept`);
+      await acceptRequest(fromUser, username);
+      await refresh();
+    } finally {
+      setProcessingReq(null);
+    }
+  };
 
-  const handleDecline = useCallback(
-    async (fromUser: string) => {
-      if (!username) return;
-      try {
-        setProcessingReq(`${fromUser}-decline`);
-        await declineRequest(fromUser, username); // from -> to (you)
-        await refresh();
-      } catch (e) {
-        console.error('Decline failed', e);
-      } finally {
-        setProcessingReq(null);
-      }
-    },
-    [declineRequest, refresh, username],
-  );
+  const handleDecline = async (fromUser: string) => {
+    if (USE_DUMMY_DATA) return;
+    if (!username) return;
+    try {
+      setProcessingReq(`${fromUser}-decline`);
+      await declineRequest(fromUser, username);
+      await refresh();
+    } finally {
+      setProcessingReq(null);
+    }
+  };
+
+  const sortedFriends = [...effectiveFriends].sort((a, b) => {
+    const aInRoom = friendToRoom.get(a.username) ? 1 : 0;
+    const bInRoom = friendToRoom.get(b.username) ? 1 : 0;
+
+    if (aInRoom !== bInRoom) return bInRoom - aInRoom;
+    return a.username.localeCompare(b.username);
+  });
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ flexGrow: 1 }}>
-      <View className="flex-1 items-center gap-4 p-4">
-        <Stack.Screen options={{ title: 'Home' }} />
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{ flexGrow: 1 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View className="flex-1 items-center gap-6 p-4 flex flex-col">
+        <Stack.Screen
+          options={{ title: `Welcome${username ? `, ${username}` : ""}` }}
+        />
 
-        <Text className="text-xl font-bold">Welcome{username ? `, ${username}` : ''}</Text>
+        {loading && !USE_DUMMY_DATA && (
+          <Text className="text-muted-foreground">Loading…</Text>
+        )}
+        {error && !USE_DUMMY_DATA && (
+          <Text className="text-destructive">{error}</Text>
+        )}
 
-        {loading && <Text className="text-muted-foreground">Loading your data…</Text>}
-        {error && <Text className="text-destructive">{error}</Text>}
+        <CreateLobbyCard navigateLobby={() => router.push("/lobby")} />
 
-        <Button onPress={() => router.push('/lobby')} className="w-64">
-          <Text>Create Lobby</Text>
-        </Button>
-
-        <Button variant="outline" onPress={() => { void refresh(); }} className="w-64">
-          <Text>Refresh from server</Text>
-        </Button>
-
-        {/* --- Combined Friends + Rooms --- */}
-        <View className="w-full max-w-md gap-3">
-          <Text className="text-lg font-semibold">Friends & Rooms</Text>
-          {friends.length === 0 ? (
-            <Text className="text-muted-foreground">No friends yet</Text>
-          ) : (
-            friends.map((friend) => {
-              const room = friendToRoom.get(friend.username);
-              return (
-                <View
-                  key={friend.username}
-                  className="flex-row items-center justify-between rounded-xl border border-border px-3 py-2 bg-card"
-                  style={{ gap: 8 }}
-                >
-                  <View style={{ flexShrink: 1 }}>
-                    <Text className="text-foreground font-medium">{friend.username}</Text>
-                    <Text className="text-muted-foreground text-xs">
-                      {room ? `In Room #${room.id}${room.game_id ? ` · Game ${room.game_id}` : ''}` : 'Offline / Not in a room'}
+        {/* Friends & Rooms */}
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Your Friends</CardTitle>
+          </CardHeader>
+          <CardContent className="gap-2">
+            {effectiveFriends.length === 0 ? (
+              <Text className="text-muted-foreground">No friends yet</Text>
+            ) : (
+              sortedFriends.map((friend) => {
+                const room = friendToRoom.get(friend.username);
+                return (
+                  <Pressable
+                    key={friend.username}
+                    className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
+                    onPress={
+                      room ? () => handleJoinRoom(room.id) : undefined
+                    }
+                  >
+                    <Text className="text-base text-foreground">
+                      {friend.username}
                     </Text>
-                  </View>
+                    {room ? (
+                      <Text className="text-sm font-medium text-green-600">
+                        {joiningRoomId === room.id
+                          ? "Joining…"
+                          : `In Room #${room.id}`}
+                      </Text>
+                    ) : (
+                      <Text className="text-sm text-secondary">Offline</Text>
+                    )}
+                  </Pressable>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
 
-                  {room ? (
-                    <Button
-                      size="sm"
-                      onPress={() => handleJoinRoom(room.id)}
-                      disabled={joiningRoomId === room.id}
-                    >
-                      <Text>{joiningRoomId === room.id ? 'Joining…' : 'Join'}</Text>
-                    </Button>
-                  ) : (
-                    <View className="px-2 py-1 rounded-md bg-muted">
-                      <Text className="text-xs text-muted-foreground">Not in room</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        {/* --- Incoming Requests with Accept / Decline --- */}
-        <View className="w-full max-w-md gap-3 pb-12">
-          <Text className="text-lg font-semibold">Incoming Requests</Text>
-          {incomingRequests.length === 0 ? (
-            <Text className="text-muted-foreground">No pending requests</Text>
-          ) : (
-            incomingRequests.map((requester) => {
-              const isAccepting = processingReq === `${requester.username}-accept`;
-              const isDeclining = processingReq === `${requester.username}-decline`;
-              return (
-                <View
-                  key={requester.username}
-                  className="rounded-xl border border-border bg-card px-3 py-2"
-                  style={{ gap: 8 }}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-foreground font-medium">{requester.username}</Text>
-                    <View className="flex-row" style={{ gap: 8 }}>
+        {/* Friend Requests */}
+        <Card className="w-full max-w-md mb-12">
+          <CardHeader>
+            <CardTitle>Friend Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="gap-2">
+            {effectiveRequests.length === 0 ? (
+              <Text className="text-muted-foreground">No pending requests</Text>
+            ) : (
+              effectiveRequests.map((req) => {
+                const isAccepting =
+                  processingReq === `${req.username}-accept`;
+                const isDeclining =
+                  processingReq === `${req.username}-decline`;
+                return (
+                  <View
+                    key={req.username}
+                    className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
+                  >
+                    <Text className="text-base text-foreground">
+                      {req.username}
+                    </Text>
+                    <View className="flex-row">
                       <Button
-                        size="sm"
-                        onPress={() => handleAccept(requester.username)}
-                        disabled={isAccepting || isDeclining || !username}
+                        size="icon"
+                        variant="ghost"
+                        onPress={() => handleAccept(req.username)}
+                        disabled={isAccepting || isDeclining}
                       >
-                        <Text>{isAccepting ? 'Accepting…' : 'Accept'}</Text>
+                        {isAccepting ? (
+                          <Text>…</Text>
+                        ) : (
+                          <Icon as={Check} />
+                        )}
                       </Button>
                       <Button
-                        size="sm"
-                        variant="destructive"
-                        onPress={() => handleDecline(requester.username)}
-                        disabled={isAccepting || isDeclining || !username}
+                        size="icon"
+                        variant="ghost"
+                        onPress={() => handleDecline(req.username)}
+                        disabled={isAccepting || isDeclining}
                       >
-                        <Text>{isDeclining ? 'Declining…' : 'Decline'}</Text>
+                        {isDeclining ? <Text>…</Text> : <Icon as={X} />}
                       </Button>
                     </View>
                   </View>
-                </View>
-              );
-            })
-          )}
-        </View>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
       </View>
     </ScrollView>
   );

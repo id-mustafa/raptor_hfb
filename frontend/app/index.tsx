@@ -19,7 +19,7 @@ export default function Login() {
   const router = useRouter();
 
   const handleLogin = useCallback(() => {
-    if (!input.trim()) return;
+    //if (!input.trim()) return;
     setUsername(input.trim());
     router.push('/home');
   }, [input, router, setUsername]);
