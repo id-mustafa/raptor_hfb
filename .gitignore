@@ -1,0 +1,17 @@
+cat >> .gitignore << 'EOF'
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# (optional, recommended)
+.venv/
+.env
+EOF
+
+# Remove every __pycache__ dir in backend from the index
+find backend -type d -name '__pycache__' -print0 | xargs -0 git rm -r --cached
+
+# Also untrack stray .pyc/.pyo files
+find backend -type f \( -name '*.pyc' -o -name '*.pyo' \) -print0 | xargs -0 git rm --cached
+

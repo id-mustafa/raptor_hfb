@@ -30,6 +30,21 @@ This will start the Expo Dev Server. Open the app in:
 
 You can also scan the QR code using the [Expo Go](https://expo.dev/go) app on your device. This project fully supports running in Expo Go for quick testing on physical devices.
 
+## Backend connectivity
+
+- The FastAPI backend listens on `http://localhost:4402` by default.
+- The Expo app reads the backend base URL from `app.json` (`expo.extra.apiUrl`). Adjust this value if your backend runs elsewhere (for example on a different machine IP when testing on a physical device).
+- CORS is configured on the backend to accept requests from the Expo dev ports (`4400`, `4401`, `8081`, `19006`). If you expose the frontend from a different origin, add it in `backend/main.py`.
+
+### Verifying the connection
+
+1. Start the FastAPI server (e.g. `uvicorn backend.main:app --host 0.0.0.0 --port 4402`).
+2. In another terminal start the Expo dev server (`npm run dev`).
+3. Log in with an existing username (e.g. `user1`) or enter a new name to auto-create it.
+4. From the home screen press **Refresh from server** to confirm friends, requests, and rooms load without errors.
+
+Use the helper actions exposed by the `AuthProvider` hook to trigger friend requests (`sendRequest`, `acceptRequest`, `declineRequest`) and room actions (`createRoomForUser`, `joinRoomForUser`, `leaveRoomForUser`).
+
 ## Adding components
 
 You can add more reusable components using the CLI:
