@@ -47,7 +47,8 @@ COPY frontend/package*.json ./
 # Install ALL deps to build; prune later if you care about size
 RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+# Build static web output with Expo
+RUN npx expo export --platform web --output-dir dist
 
 # Move built static to where Caddy will serve from
 WORKDIR /app
