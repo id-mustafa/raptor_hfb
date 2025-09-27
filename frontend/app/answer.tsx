@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -14,32 +14,33 @@ import triggerVibration from "@/utils/Vibration";
 
 export default function BetResult() {
   const router = useRouter();
+  const { selection } = useLocalSearchParams<{ selection?: string }>();
 
-  // Animation states
+  const betWasPlaced = selection !== undefined;
+
   const revealProgress = useSharedValue(0);
   const [phase, setPhase] = useState<'placed' | 'result'>('placed');
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Randomly pick result
-      const outcomes: ('correct' | 'incorrect')[] = ['correct', 'incorrect'];
-      const chosen = outcomes[Math.floor(Math.random() * outcomes.length)];
-      setResult(chosen);
-      setPhase('result');
+    if (betWasPlaced) {
+      const timer = setTimeout(() => {
+        const chosenResult = selection === '3' ? 'correct' : 'incorrect';
+        setResult(chosenResult);
+        setPhase('result');
 
-      triggerVibration(); 
+        triggerVibration();
 
-      revealProgress.value = withTiming(1, {
-        duration: 1200,
-        easing: Easing.out(Easing.exp),
-      });
-    }, 5000);
+        revealProgress.value = withTiming(1, {
+          duration: 1200,
+          easing: Easing.out(Easing.exp),
+        });
+      }, 5000); 
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [betWasPlaced, selection, revealProgress]);
 
-  // Radial fill animation
   const circleStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: interpolate(revealProgress.value, [0, 1], [0, 7.5]) },
@@ -64,7 +65,9 @@ export default function BetResult() {
 
       <View className="flex-1 items-center justify-center gap-6 p-4">
         {phase === 'placed' && (
-          <Text className="text-4xl font-bold text-center">Bet Placed</Text>
+          <Text className="text-4xl font-bold text-center">
+            {betWasPlaced ? 'Bet Placed' : 'No Bet Placed'}
+          </Text>
         )}
         {phase === 'result' && result && (
           <>

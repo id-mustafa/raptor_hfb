@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import Timer from '@/components/ui/timer';
-import { useEffect, useState, useRef, use } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Animated, {
   Easing,
   interpolate,
@@ -28,7 +28,6 @@ const AnimatedText = Animated.createAnimatedComponent(Text);
 export default function Question() {
   const router = useRouter();
   const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const hasNavigated = useRef(false);
 
   // Animation state
@@ -39,23 +38,26 @@ export default function Question() {
   const [showContent, setShowContent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
+  // Use a ref to track the latest selectedIndex for the timeout
+  const selectedIndexRef = useRef(selectedIndex);
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
+
   const sliderValue = useSharedValue(0);
   const sliderMin = useSharedValue(0);
   const sliderMax = useSharedValue(100);
-
   const isDragging = useSharedValue(0);
 
   const animatedText = useDerivedValue(() => {
     return `${Math.max(Math.min(Math.round(sliderValue.value), sliderMax.value), sliderMin.value)}`;
   });
 
-const animatedWagerLineStyle = useAnimatedStyle(() => {
+  const animatedWagerLineStyle = useAnimatedStyle(() => {
     const scale = interpolate(isDragging.value, [0, 1], [1, 1.10]);
-
     return {
-      transform: [
-        { scale },
-      ],
+      transform: [{ scale }],
     };
   });
 
@@ -80,15 +82,24 @@ const animatedWagerLineStyle = useAnimatedStyle(() => {
       fadeAccent.value = withTiming(0, { duration: 300 });
     }, PREP_DURATION);
 
-    triggerVibration(); 
+    triggerVibration();
 
     const contentFadeIn = setTimeout(() => {
       runOnJS(setShowContent)(true);
       fadeContent.value = withTiming(1, { duration: 200 });
 
       navigationTimerRef.current = setTimeout(() => {
-        if (!hasNavigated.current) {
-          hasNavigated.current = true; 
+        if (hasNavigated.current) return;
+        hasNavigated.current = true;
+        
+        const finalIndex = selectedIndexRef.current; 
+
+        if (finalIndex !== null) {
+          router.push({
+            pathname: '/answer',
+            params: { selection: finalIndex.toString() },
+          });
+        } else {
           router.push('/answer');
         }
       }, QUESTION_DURATION);
@@ -102,16 +113,16 @@ const animatedWagerLineStyle = useAnimatedStyle(() => {
         clearTimeout(navigationTimerRef.current);
       }
     };
-  }, []);
+  }, []); // Keep empty dependency array to run only once
 
   const handleManualSubmit = () => {
-    if (!hasNavigated.current) {
-      hasNavigated.current = true; 
-      if (navigationTimerRef.current) {
-        clearTimeout(navigationTimerRef.current);
-      }
-      router.push('/answer');
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+    
+    if (navigationTimerRef.current) {
+      clearTimeout(navigationTimerRef.current);
     }
+    router.push('/answer'); // Navigate without params for a skip
   };
 
   const circleStyle = useAnimatedStyle(() => ({
@@ -172,7 +183,7 @@ const animatedWagerLineStyle = useAnimatedStyle(() => {
           </View>
           <Button variant="ghost"><Text className="text-secondary text-lg" onPress={handleManualSubmit}>skip bet &rarr;</Text></Button>
           <View className="w-full flex-col justify-center gap-4">
-           <Animated.View style={animatedWagerLineStyle} className="flex flex-row items-center gap-1 justify-center">
+            <Animated.View style={animatedWagerLineStyle} className="flex flex-row items-center gap-1 justify-center">
               <Text className="text-lg mt-1">Wager</Text>
               <ReText text={animatedText} style={animatedReTextStyle} />
               <Text className="text-lg mt-1">Points</Text>
@@ -200,11 +211,9 @@ const animatedWagerLineStyle = useAnimatedStyle(() => {
                   easing: Easing.out(Easing.quad),
                 });
               }}
-
               renderThumb={() => <View className="w-7 h-7 rounded-full bg-primary " />}
               renderBubble={() => null}
             />
-
           </View>
         </Animated.View>
       )}
