@@ -1,17 +1,10 @@
-// Caddyfile.prod
-{
-  admin off
-  auto_https off
-}
+:{$PORT}
+encode gzip
 
-:{$PORT} {
-  handle_path /api/* {
-    reverse_proxy 127.0.0.1:4402
-  }
-  handle {
-    root * /app/frontend/dist
-    try_files {path} /index.html
-    file_server
-    encode gzip
-  }
-}
+# API goes to Uvicorn on 4402
+@api path /api/*
+reverse_proxy @api 127.0.0.1:4402
+
+# Everything else is static files
+root * /srv/www
+file_server
