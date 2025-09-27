@@ -37,6 +37,10 @@ const buttonVariants = cva(
           'active:bg-accent dark:active:bg-accent/50',
           Platform.select({ web: 'hover:bg-accent dark:hover:bg-accent/50' })
         ),
+        dark: cn(
+          'bg-background active:bg-background dark:active:bg-background/50',
+          Platform.select({ web: 'hover:bg-background dark:hover:bg-background/50' })
+        ),
         link: '',
       },
       size: {
@@ -73,6 +77,7 @@ const buttonTextVariants = cva(
           'text-primary group-active:underline',
           Platform.select({ web: 'underline-offset-4 hover:underline group-hover:underline' })
         ),
+        dark: 'text-secondary-foreground',
       },
       size: {
         default: '',

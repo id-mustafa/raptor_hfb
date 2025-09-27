@@ -9,6 +9,7 @@ import { useColorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import { AuthProvider } from '../utils/AuthProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export {
   ErrorBoundary,
@@ -23,6 +24,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider value={NAV_THEME.dark}>
           <StatusBar style="light" />
@@ -38,6 +40,7 @@ export default function RootLayout() {
           <PortalHost />
         </ThemeProvider>
       </SafeAreaProvider>
+      </GestureHandlerRootView>
     </AuthProvider>
   );
 }
