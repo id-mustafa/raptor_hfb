@@ -73,6 +73,8 @@ COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
 RUN npm ci --only=production
 
+RUN npm install typescript@~5.9.2 @types/react @types/react-native
+
 # Copy frontend code
 COPY frontend/ ./
 
@@ -81,6 +83,8 @@ COPY frontend/ ./
 
 # Copy configuration files
 WORKDIR /app
+COPY Procfile.prod ./Procfile.prod
+
 COPY Procfile ./
 COPY Caddyfile ./
 
