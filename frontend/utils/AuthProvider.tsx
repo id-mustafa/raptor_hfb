@@ -80,11 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           getRooms(),
         ]);
 
-        setUser(resolvedUser);
-        setFriends(friendList);
-        setIncomingRequests(requestList);
-        setRooms(roomList);
-        setError(null);
+        setUser(() => resolvedUser);
+        setFriends(() => friendList);
+        setIncomingRequests(() => requestList);
+        setRooms(() => roomList);
+        setError(() => null);
       } catch (err) {
         console.error('Failed to fetch auth data', err);
         const message =
@@ -93,9 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : err instanceof Error
               ? err.message
               : 'Failed to reach the server';
-        setError(message);
+        setError(() => message);
       } finally {
-        setLoading(false);
+        setLoading(() => false);
       }
     },
     [],
@@ -103,12 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!username) {
-      setUser(null);
-      setFriends([]);
-      setIncomingRequests([]);
-      setRooms([]);
-      setError(null);
-      setLoading(false);
+      setUser(() => null);
+      setFriends(() => []);
+      setIncomingRequests(() => []);
+      setRooms(() => []);
+      setError(() => null);
+      setLoading(() => false);
       return;
     }
 
