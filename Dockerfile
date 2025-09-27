@@ -56,10 +56,10 @@ RUN python3 -m ensurepip
 RUN python3 -m pip install --upgrade setuptools
 
 # Install Database Dependencies
-COPY backend/requirements.txt /workspaces/raptor_hfb/backend/requirements.txt
+# COPY backend/requirements.txt /workspaces/raptor_hfb/backend/requirements.txt
+COPY . /workspaces/raptor_hfb
 WORKDIR /workspaces/raptor_hfb/backend
 RUN python3 -m pip install -r requirements.txt
-
 
 # Use a non-root user per https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user
 ARG USERNAME=vscode
