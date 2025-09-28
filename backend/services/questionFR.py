@@ -846,7 +846,7 @@ class QuestionFRService:
         print("timer_seconds: ", timer_seconds)
         await asyncio.sleep(10)  # initial delay
 
-        while timer_seconds > 0:
+        while timer_seconds > 600:
             # For example, generate question every 50 seconds of game time
             interval = 50
             curr_play_by_play = get_next_plays(play_by_play, start_timestamp=timer_seconds, n=20)
