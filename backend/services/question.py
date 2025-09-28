@@ -19,47 +19,32 @@ class QuestionService:
     def __init__(self, db: Session = Depends(db_session)):
         self.db = db
 
-    def create_question(
-        self,
-        game_id: int,
-        question_type: QuestionType,
-        question: str,
-        multiplier: float,
-        player_id: int,
-        metric_type: PlayerMetricType,
-        metric_value: float,
-        answer: QuestionResolution,
-        betting_deadline: datetime,
-    ):
-        question = Question(
-            game_id=game_id,
-            question_type=question_type,
-            question=question,
-            multiplier=multiplier,
-            player_id=player_id,
-            metric_type=metric_type,
-            metric_value=metric_value,
-            answer=answer,
-            betting_deadline=betting_deadline,
-        )
-        game = self.db.exec(select(Game).where(Game.id == game_id)).first()
+    def create_question(self, q: Question):
+        # Validate referenced entities
+        game = self.db.exec(select(Game).where(Game.id == q.game_id)).first()
         if not game:
             raise HTTPException(404, "Game not found")
-        question.game = game
-        player = self.db.exec(select(Player).where(Player.id == player_id)).first()
+        player = self.db.exec(select(Player).where(Player.id == q.player_id)).first()
         if not player:
             raise HTTPException(404, "Player not found")
-        question.player = player
-        self.db.add(question)
+        # Persist
+        self.db.add(q)
         self.db.commit()
-        self.db.refresh(question)
-        return question
+        self.db.refresh(q)
+        return q
 
     def get_question(self, question_id: int):
         return self.db.exec(select(Question).where(Question.id == question_id)).first()
 
     def get_questions(self, game_id: int):
         return self.db.exec(select(Question).where(Question.game_id == game_id)).all()
+
+    def get_questions_by_game_room(self, game_id: int, room_id: int):
+        return self.db.exec(
+            select(Question).where(
+                Question.game_id == game_id, Question.room_id == room_id
+            )
+        ).all()
 
     def update_question(self, question_id: int, question: Question):
         existing_question = self.db.exec(
@@ -147,7 +132,12 @@ class QuestionService:
                 select(User).where(User.username == bet.username)
             ).first()
             if user:
-                user.tokens = int(user.tokens + bet.outcome)
+                # tokens stored as str; normalize to int for arithmetic
+                try:
+                    current = int(user.tokens)
+                except Exception:
+                    current = 0
+                user.tokens = str(current + int(bet.outcome or 0))
                 self.db.add(user)
                 self.db.add(bet)
             else:

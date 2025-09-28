@@ -10,6 +10,7 @@ openapi_tags = {
 
 api = APIRouter(prefix="/question", tags=["Questions"])
 
+
 @api.post("/create", response_model=Question, tags=["Questions"])
 async def create_question(
     question: Question, question_svc: QuestionService = Depends(QuestionService)
@@ -22,6 +23,17 @@ async def get_questions(
     game_id: int, question_svc: QuestionService = Depends(QuestionService)
 ):
     return question_svc.get_questions(game_id)
+
+
+@api.get(
+    "/by-game-room/{game_id}/{room_id}",
+    response_model=List[Question],
+    tags=["Questions"],
+)
+async def get_questions_by_game_room(
+    game_id: int, room_id: int, question_svc: QuestionService = Depends(QuestionService)
+):
+    return question_svc.get_questions_by_game_room(game_id, room_id)
 
 
 @api.put("/{question_id}", response_model=Question, tags=["Questions"])

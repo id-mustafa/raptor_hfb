@@ -16,6 +16,7 @@ class Question(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     game_id: str = Field(foreign_key="game_data.game_key")
+    room_id: int = Field(foreign_key="room.id")
 
     # Question details
     question: str = Field()
