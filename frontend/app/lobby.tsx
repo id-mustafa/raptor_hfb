@@ -1,29 +1,22 @@
-import React, { useEffect, useRef, useMemo, useCallback } from "react";
-import { View, Dimensions, ImageSourcePropType, Pressable } from "react-native";
+import React, { useEffect, useRef, useMemo, useCallback, useState } from "react";
+import { View, Dimensions, Pressable, RefreshControl, ScrollView, ImageSourcePropType } from "react-native";
 import Matter from "matter-js";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, RefreshCcw } from "lucide-react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  SharedValue,
-  useSharedValue,
-  useAnimatedStyle,
-  runOnJS,
-} from "react-native-reanimated";
-
+import Animated, { SharedValue, useSharedValue, useAnimatedStyle, runOnJS } from "react-native-reanimated";
 import { triggerSelectionHaptic } from "@/utils/Vibration";
 import { THEME } from "@/lib/theme";
-
 import { BackHandler } from "react-native";
+import { useAuth } from "@/utils/AuthProvider";
 
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
 const MAX_VELOCITY = 15;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 const HEIGHT_OFFSET = 200;
 
 type Player = {
@@ -32,56 +25,25 @@ type Player = {
   avatar: ImageSourcePropType;
 };
 
-type PlayerAvatarProps = {
-  position: {
-    x: SharedValue<number>;
-    y: SharedValue<number>;
-  };
-  source: ImageSourcePropType;
-};
+const PlayerAvatar = React.memo<{ position: { x: SharedValue<number>; y: SharedValue<number> }; source: ImageSourcePropType }>(
+  ({ position, source }) => {
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ translateX: position.x.value }, { translateY: position.y.value }],
+    }));
+    return (
+      <Animated.View className="absolute" style={[{ width: AVATAR_SIZE, height: AVATAR_SIZE }, animatedStyle]}>
+        <Animated.Image source={source} className="w-full h-full" style={{ borderRadius: AVATAR_RADIUS }} />
+      </Animated.View>
+    );
+  }
+);
 
-const PlayerAvatar = React.memo<PlayerAvatarProps>(({ position, source }) => {
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: position.x.value },
-        { translateY: position.y.value },
-      ],
-    };
-  });
-
+const PlayerName = React.memo<{ name: string; position: { x: SharedValue<number>; y: SharedValue<number> } }>(({ name, position }) => {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: position.x.value }, { translateY: position.y.value + AVATAR_SIZE }],
+  }));
   return (
-    <Animated.View
-      className="absolute"
-      style={[{ width: AVATAR_SIZE, height: AVATAR_SIZE }, animatedStyle]}
-    >
-      <Animated.Image
-        source={source}
-        className="w-full h-full"
-        style={{ borderRadius: AVATAR_RADIUS }}
-      />
-    </Animated.View>
-  );
-});
-
-const PlayerName = React.memo<{
-  name: string;
-  position: { x: SharedValue<number>; y: SharedValue<number> };
-}>(({ name, position }) => {
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: position.x.value },
-        { translateY: position.y.value + AVATAR_SIZE },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View
-      className="absolute items-center"
-      style={[{ width: AVATAR_SIZE, paddingTop: 4 }, animatedStyle]}
-    >
+    <Animated.View className="absolute items-center" style={[{ width: AVATAR_SIZE, paddingTop: 4 }, animatedStyle]}>
       <Text className="font-bold text-lg text-foreground bg-background px-2 rounded">{name}</Text>
     </Animated.View>
   );
@@ -90,6 +52,8 @@ const PlayerName = React.memo<{
 export default function Lobby() {
   const router = useRouter();
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const handleBack = useCallback(() => {
     router.push("/home");
     return true;
@@ -97,36 +61,27 @@ export default function Lobby() {
 
   useFocusEffect(
     useCallback(() => {
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        handleBack
-      );
-
+      const subscription = BackHandler.addEventListener("hardwareBackPress", handleBack);
       return () => subscription.remove();
     }, [handleBack])
   );
 
-  const players: Player[] = useMemo(
-    () => [
-      { id: "1", name: "Alice", avatar: require("@/assets/images/avatar1.jpg") },
-      { id: "2", name: "Bob", avatar: require("@/assets/images/avatar2.jpg") },
-      { id: "3", name: "Charlie", avatar: require("@/assets/images/avatar3.jpg") },
-      { id: "4", name: "David", avatar: require("@/assets/images/avatar4.jpg") },
-      { id: "5", name: "Eve", avatar: require("@/assets/images/avatar5.jpg") },
-    ],
-    []
-  );
+  const { currentRoomId, currentRoomUsers, refresh } = useAuth();
 
+  const players: Player[] = useMemo(() => {
+    return currentRoomUsers.map((u, idx) => ({
+      id: u.username,
+      name: u.username,
+      avatar: require("@/assets/images/avatar1.jpg"), 
+    }));
+  }, [currentRoomUsers]);
+
+  // Physics + animation setup
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
 
-  const animatedPositions: {
-    [key: string]: { x: SharedValue<number>; y: SharedValue<number> };
-  } = Object.fromEntries(
-    players.map((p) => [
-      p.id,
-      { x: useSharedValue(0), y: useSharedValue(0) },
-    ])
+  const animatedPositions: Record<string, { x: SharedValue<number>; y: SharedValue<number> }> = Object.fromEntries(
+    players.map((p) => [p.id, { x: useSharedValue(0), y: useSharedValue(0) }])
   );
 
   const draggedBodyId = useSharedValue<string | null>(null);
@@ -141,22 +96,15 @@ export default function Lobby() {
     const spacingY = 50;
 
     const rows = Math.ceil(players.length / cols);
-    const totalHeight =
-      rows * AVATAR_SIZE + (rows - 1) * spacingY;
+    const totalHeight = rows * AVATAR_SIZE + (rows - 1) * spacingY;
     const startY = (containerHeight - totalHeight) / 2 + AVATAR_RADIUS;
 
     players.forEach((p, index) => {
       const row = Math.floor(index / cols);
       const col = index % cols;
-
-      const numInRow =
-        row === rows - 1 && players.length % cols !== 0
-          ? players.length % cols
-          : cols;
-
+      const numInRow = row === rows - 1 && players.length % cols !== 0 ? players.length % cols : cols;
       const rowWidth = numInRow * AVATAR_SIZE + (numInRow - 1) * spacingX;
       const startX = (containerWidth - rowWidth) / 2 + AVATAR_RADIUS;
-
       const x = startX + col * (AVATAR_SIZE + spacingX);
       const y = startY + row * (AVATAR_SIZE + spacingY);
 
@@ -166,7 +114,6 @@ export default function Lobby() {
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
       }
-
       animatedPositions[p.id].x.value = x - AVATAR_RADIUS;
       animatedPositions[p.id].y.value = y - AVATAR_RADIUS;
     });
@@ -190,10 +137,7 @@ export default function Lobby() {
 
     const bodies: Record<string, Matter.Body> = {};
     players.forEach((p) => {
-      const body = Matter.Bodies.circle(0, 0, AVATAR_RADIUS, {
-        restitution: 0.9,
-        frictionAir: 0.03,
-      });
+      const body = Matter.Bodies.circle(0, 0, AVATAR_RADIUS, { restitution: 0.9, frictionAir: 0.03 });
       bodies[p.id] = body;
       Matter.World.add(world, body);
     });
@@ -211,17 +155,14 @@ export default function Lobby() {
         if (body) {
           let targetX = fingerPosition.value.x - dragOffset.value.dx;
           let targetY = fingerPosition.value.y - dragOffset.value.dy;
-
           targetX = Math.max(AVATAR_RADIUS, Math.min(targetX, SCREEN_WIDTH - AVATAR_RADIUS));
           targetY = Math.max(AVATAR_RADIUS, Math.min(targetY, containerHeight - AVATAR_RADIUS));
-
           Matter.Body.setPosition(body, { x: targetX, y: targetY });
           Matter.Body.setVelocity(body, { x: 0, y: 0 });
         }
       }
-
       for (const p of players) {
-        const body = bodies[p.id];
+        const body = bodiesRef.current[p.id];
         if (body) {
           animatedPositions[p.id].x.value = body.position.x - AVATAR_RADIUS;
           animatedPositions[p.id].y.value = body.position.y - AVATAR_RADIUS;
@@ -237,7 +178,7 @@ export default function Lobby() {
       Matter.World.clear(world, false);
       Matter.Engine.clear(engine);
     };
-  }, [setPlayers]);
+  }, [setPlayers, players]);
 
   const onDragStart = useCallback((x: number, y: number) => {
     for (const [id, body] of Object.entries(bodiesRef.current)) {
@@ -255,13 +196,8 @@ export default function Lobby() {
     const id = draggedBodyId.value;
     if (id && bodiesRef.current[id]) {
       const body = bodiesRef.current[id];
-
-      let vx = velocityX / 10;
-      let vy = velocityY / 10;
-
-      vx = Math.max(-MAX_VELOCITY, Math.min(vx, MAX_VELOCITY));
-      vy = Math.max(-MAX_VELOCITY, Math.min(vy, MAX_VELOCITY));
-
+      let vx = Math.max(-MAX_VELOCITY, Math.min(velocityX / 10, MAX_VELOCITY));
+      let vy = Math.max(-MAX_VELOCITY, Math.min(velocityY / 10, MAX_VELOCITY));
       Matter.Body.setVelocity(body, { x: vx, y: vy });
     }
     draggedBodyId.value = null;
@@ -277,19 +213,34 @@ export default function Lobby() {
     })
     .onEnd((e) => {
       runOnJS(onDragEnd)(e.velocityX, e.velocityY);
-    })
-    .withTestId("pan-gesture-handler");
+    });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
 
   return (
-    <View className="flex-1 items-center justify-between bg-background">
-      <Stack.Screen options={{
-        title: `Lobby (${players.length}/5 players)`,
-        headerLeft: () => (
-          <Pressable onPress={() => router.push('/home')}>
-            <ChevronLeft size={24} color={THEME.dark.secondary} />
-          </Pressable>
-        )
-      }} />
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{ flexGrow: 1 }}
+    >
+      <Stack.Screen
+        options={{
+          title: `Lobby (${players.length} players)`,
+          headerLeft: () => (
+            <Pressable onPress={() => router.push("/home")}>
+              <ChevronLeft size={24} color={THEME.dark.secondary} />
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable onPress={handleRefresh}>
+              <RefreshCcw size={22} color={THEME.dark.secondary} />
+            </Pressable>
+          ),
+        }}
+      />
 
       <GestureDetector gesture={panGesture}>
         <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - HEIGHT_OFFSET }}>
@@ -299,11 +250,10 @@ export default function Lobby() {
           {players.map((p) => (
             <PlayerName key={`${p.id}-name`} name={p.name} position={animatedPositions[p.id]} />
           ))}
-
         </View>
       </GestureDetector>
 
-      <View className="flex flex-col gap-2">
+      <View className="flex flex-col gap-2 items-center">
         <Button variant="ghost" onPress={setPlayers} className="w-64">
           <Text className="font-normal">reset positions</Text>
         </Button>
@@ -312,6 +262,6 @@ export default function Lobby() {
           <Text>Start Game</Text>
         </Button>
       </View>
-    </View>
+    </ScrollView>
   );
 }

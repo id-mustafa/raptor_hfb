@@ -44,6 +44,10 @@ type AuthContextType = {
   getAllUsers: () => Promise<User[]>;
   points: number;
   setPoints: (newPoints: number) => void;
+  currentRoomId: number | null;
+  setCurrentRoomId: (id: number | null) => void;
+  allUsers: User[];
+  currentRoomUsers: User[];
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,67 +72,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [points, setPoints] = useState<number>(100);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [currentRoomId, setCurrentRoomId] = useState<number | null>(null);
 
   const fetchAll = useCallback(
     async (name: string) => {
       setLoading(true);
       try {
-        const [resolvedUser, friendList, requestList, roomList] = await Promise.all([
+        const [resolvedUser, friendList, requestList, roomList, allUsersList] = await Promise.all([
           resolveUser(name),
           getFriends(name),
           getIncomingRequests(name),
           getRooms(),
+          getAllUsers(),
         ]);
 
-        setUser(() => resolvedUser);
-        setFriends(() => friendList);
-        setIncomingRequests(() => requestList);
-        setRooms(() => roomList);
-        setError(() => null);
+        setUser(resolvedUser);
+        if (resolvedUser.room_id) {
+          setCurrentRoomId(resolvedUser.room_id);
+        }
+        setFriends(friendList);
+        setIncomingRequests(requestList);
+        setRooms(roomList);
+        setAllUsers(allUsersList);
+        setError(null);
       } catch (err) {
-        console.error('Failed to fetch auth data', err);
+        console.error("Failed to fetch auth data", err);
         const message =
           err instanceof ApiError
             ? err.message
             : err instanceof Error
               ? err.message
-              : 'Failed to reach the server';
-        setError(() => message);
+              : "Failed to reach the server";
+        setError(message);
       } finally {
-        setLoading(() => false);
+        setLoading(false);
       }
     },
     [],
   );
+
+  // current room users — for now capped at 6
+  const currentRoomUsers = useMemo(() => {
+    if (!currentRoomId) return [];
+    return allUsers.filter((u, index) => u.room_id === currentRoomId);
+  }, [allUsers, currentRoomId]);
 
   useEffect(() => {
     if (!username) {
-      setUser(() => null);
-      setFriends(() => []);
-      setIncomingRequests(() => []);
-      setRooms(() => []);
-      setError(() => null);
-      setLoading(() => false);
+      setUser(null);
+      setFriends([]);
+      setIncomingRequests([]);
+      setRooms([]);
+      setError(null);
+      setLoading(false);
       return;
     }
-
     void fetchAll(username);
   }, [username, fetchAll]);
 
-  const handleSetUsername = useCallback(
-    (name: string | null) => {
-      setUsernameState(name);
-      if (!name) {
-        return;
-      }
-    },
-    [],
-  );
+  const handleSetUsername = useCallback((name: string | null) => {
+    setUsernameState(name);
+  }, []);
 
   const refresh = useCallback(async () => {
-    if (!username) {
-      return;
-    }
+    if (!username) return;
     await fetchAll(username);
   }, [username, fetchAll]);
 
@@ -148,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const success = await joinRoom(name, roomId);
       if (success && username === name) {
         await fetchAll(name);
+        setCurrentRoomId(roomId);
       }
       return success;
     },
@@ -159,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const success = await leaveRoom(name);
       if (success && username === name) {
         await fetchAll(name);
+        setCurrentRoomId(null);
       }
       return success;
     },
@@ -215,6 +225,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getAllUsers,
       points,
       setPoints,
+      currentRoomId,
+      setCurrentRoomId,
+      allUsers,
+      currentRoomUsers,
     }),
     [
       username,
@@ -234,6 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       declineRequestHandler,
       points,
       setPoints,
+      currentRoomId,
+      allUsers,
+      currentRoomUsers,
     ],
   );
 

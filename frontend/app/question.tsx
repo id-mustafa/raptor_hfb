@@ -153,7 +153,7 @@ export default function Question() {
   };
 
   const circleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(revealProgress.value, [0, 1], [-3, 7.5]) }],
+    transform: [{ scale: interpolate(revealProgress.value, [0, 1], [-3, 8]) }],
     opacity: fadeAccent.value,
   }));
   const contentStyle = useAnimatedStyle(() => ({

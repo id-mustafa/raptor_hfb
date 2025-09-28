@@ -63,6 +63,8 @@ export default function Home() {
     acceptRequest,
     declineRequest,
     sendRequest,
+    joinRoomForUser,
+    createRoomForUser,
   } = useAuth();
 
   const [newFriend, setNewFriend] = useState("");
@@ -82,9 +84,9 @@ export default function Home() {
   const dummyRequests = [{ username: "David" }, { username: "Eve" }];
   const dummyRooms: RoomLike[] = [{ id: 1, participants: [{ username: "Bob" }] }];
 
-  const effectiveFriends = USE_DUMMY_DATA ? dummyFriends : friends;
-  const effectiveRequests = USE_DUMMY_DATA ? dummyRequests : incomingRequests;
-  const effectiveRooms = USE_DUMMY_DATA ? dummyRooms : rooms;
+  const effectiveFriends =  friends;
+  const effectiveRequests = incomingRequests;
+  const effectiveRooms = dummyRooms;
 
   const [refreshing, setRefreshing] = useState(false);
   const [joiningRoomId, setJoiningRoomId] = useState<number | null>(null);
@@ -127,18 +129,21 @@ export default function Home() {
     return map;
   }, [effectiveRooms]);
 
-  const handleJoinRoom = async (roomId: number) => {
-    if (USE_DUMMY_DATA) return;
-    if (!username) return;
-    try {
-      setJoiningRoomId(roomId);
-      const ok = await joinRoom(username, roomId);
-      if (ok) await refresh();
-    } finally {
-      setJoiningRoomId(null);
-      navigate("/lobby");
+const handleJoinRoom = async (roomId: number|null) => {
+  if (!roomId) return;
+  if (USE_DUMMY_DATA) return;
+  if (!username) return;
+  try {
+    setJoiningRoomId(roomId);
+    const ok = await joinRoomForUser(username, roomId);
+    if (ok) {
+      router.push("/lobby");
     }
-  };
+  } finally {
+    setJoiningRoomId(null);
+  }
+};
+
 
   const handleAccept = async (fromUser: string) => {
     if (USE_DUMMY_DATA) return;
@@ -194,7 +199,18 @@ export default function Home() {
 
         {error && !USE_DUMMY_DATA && <Text className="text-destructive">{error}</Text>}
 
-        <CreateLobbyCard navigateLobby={() => router.push("/lobby")} />
+        <CreateLobbyCard
+          navigateLobby={async () => {
+            if (!username) return;
+            try {
+              const room = await createRoomForUser(username);
+              router.push("/lobby");
+            } catch (err) {
+              console.error("Failed to create room", err);
+            }
+          }}
+        />
+
 
         {/* Friends & Rooms */}
         <Card className="w-full max-w-md">
@@ -202,21 +218,20 @@ export default function Home() {
             <CardTitle>Your Friends</CardTitle>
           </CardHeader>
           <CardContent className="gap-2">
-            {effectiveFriends.length === 0 ? (
+            {effectiveFriends && effectiveFriends.length === 0 ? (
               <Text className="text-muted-foreground">No friends yet</Text>
             ) : (
               sortedFriends.map((friend) => {
-                const room = friendToRoom.get(friend.username);
                 return (
                   <Pressable
                     key={friend.username}
                     className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
-                    onPress={room ? () => handleJoinRoom(room.id) : undefined}
+                    onPress={friend.room_id ? () => handleJoinRoom(friend.room_id) : undefined}
                   >
                     <Text className="text-base text-foreground">{friend.username}</Text>
-                    {room ? (
+                    {friend.room_id ? (
                       <Text className="text-sm font-medium text-green-600">
-                        {joiningRoomId === room.id ? "Joining…" : `In Room #${room.id}`}
+                        {joiningRoomId === friend.room_id ? "Joining…" : `In Room #${friend.room_id}`}
                       </Text>
                     ) : (
                       <Text className="text-sm text-secondary">Offline</Text>
