@@ -90,25 +90,12 @@ def on_startup() -> None:
     from .models.ScoreData import ScoreData
     from .models.GameData import GameData
     from .models.user import User
-    from .models.QuestionResolution import QuestionResolution
-    from .models.PlayerMetricType import PlayerMetricType
-    from .models.Request import Request
+    from .models.usertofriend import UserToFriend
     from .models.room import Room
-    from .models.friend import Friend
-    from .models.request import Request
-    from .models.room import Room
-    from .models.friend import Friend
-    from .models.request import Request
-    from .models.room import Room
-    from .models.friend import Friend
-    from .models.request import Request
-    from .models.room import Room
-    from .models.friend import Friend
     from .models.QuarterData import QuarterData
-    from .models.PlayerMetricType import PlayerMetricType
     from .models.QuestionResolution import QuestionResolution
     from .models.PlayerMetricType import PlayerMetricType   
-    
+
     SQLModel.metadata.create_all(engine)
 
 # ! Plug in each separate API file here (make sure to import above)
