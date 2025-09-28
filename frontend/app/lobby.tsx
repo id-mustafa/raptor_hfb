@@ -29,9 +29,6 @@ const MAX_VELOCITY = 15;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HEIGHT_OFFSET = 200;
 
-//
-// 👤 Avatar component (manages its own useSharedValue)
-//
 const PlayerAvatar = React.memo<{
   player: { username: string; avatar: ImageSourcePropType };
   bodyRef: React.MutableRefObject<Record<string, Matter.Body>>;
@@ -43,7 +40,6 @@ const PlayerAvatar = React.memo<{
     transform: [{ translateX: x.value }, { translateY: y.value }],
   }));
 
-  // keep reanimated values in sync with Matter.js body
   useEffect(() => {
     const id = requestAnimationFrame(function loop() {
       const body = bodyRef.current[player.username];
@@ -130,7 +126,7 @@ export default function Lobby() {
     }, [handleBack])
   );
 
-  const { currentRoomUsers, refresh } = useAuth();
+  const { currentRoomUsers, refresh, setGameStartTime } = useAuth();
 
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
@@ -284,12 +280,7 @@ export default function Lobby() {
             <Pressable onPress={() => router.push("/home")}>
               <ChevronLeft size={24} color={THEME.dark.secondary} />
             </Pressable>
-          ),
-          headerRight: () => (
-            <Pressable onPress={handleRefresh}>
-              <RefreshCcw size={22} color={THEME.dark.secondary} />
-            </Pressable>
-          ),
+          )
         }}
       />
 
@@ -309,7 +300,7 @@ export default function Lobby() {
           <Text className="font-normal">reset positions</Text>
         </Button>
 
-        <Button onPress={() => router.push("/game")} className="w-64 mb-20">
+        <Button onPress={() => { setGameStartTime(new Date()); router.push("/game"); }} className="w-64 mb-20">
           <Text>Start Game</Text>
         </Button>
       </View>

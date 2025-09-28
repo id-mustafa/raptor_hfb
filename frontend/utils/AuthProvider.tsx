@@ -53,6 +53,8 @@ type AuthContextType = {
   enablePolling: () => void;
   disablePolling: () => void;
   isPolling: boolean;
+  gameStartTime: Date | null;
+  setGameStartTime: (time: Date | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [currentRoomId, setCurrentRoomId] = useState<number | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
 
   // Use refs to track polling state
   const pollingIntervalRef = useRef<number | null>(null);
@@ -110,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isPollingRequest) {
         setLoading(true);
       }
-      
+
       try {
         const [resolvedUser, friendList, requestList, roomList, allUsersList] =
           await Promise.all([
@@ -128,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFriends(friendList);
         setIncomingRequests(requestList);
         setRooms(roomList);
-        setAllUsers(assignAvatars(allUsersList));
+        setAllUsers(assignAvatars(allUsersList.sort((a, b) => a.username.localeCompare(b.username))));
         setError(null);
       } catch (err) {
         console.error("Failed to fetch auth data", err);
@@ -136,8 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           err instanceof ApiError
             ? err.message
             : err instanceof Error
-            ? err.message
-            : "Failed to reach the server";
+              ? err.message
+              : "Failed to reach the server";
         setError(message);
       } finally {
         if (!isPollingRequest) {
@@ -151,10 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Polling control functions
   const enablePolling = useCallback(() => {
     if (!username || pollingIntervalRef.current) return;
-    
+
     shouldPollRef.current = true;
     setIsPolling(true);
-    
+
     pollingIntervalRef.current = setInterval(() => {
       if (shouldPollRef.current && username) {
         fetchAll(username, true);
@@ -165,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const disablePolling = useCallback(() => {
     shouldPollRef.current = false;
     setIsPolling(false);
-    
+
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
@@ -195,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       disablePolling(); // Stop polling when no username
       return;
     }
-    
+
     void fetchAll(username);
     enablePolling(); // Start polling when username is set
   }, [username, fetchAll, enablePolling, disablePolling]);
@@ -301,6 +304,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enablePolling,
       disablePolling,
       isPolling,
+      gameStartTime,
+      setGameStartTime,
     }),
     [
       username,
@@ -326,6 +331,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enablePolling,
       disablePolling,
       isPolling,
+      gameStartTime,
+      setGameStartTime,
     ],
   );
 

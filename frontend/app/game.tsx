@@ -8,13 +8,13 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Trophy } from "lucide-react-native";
 import { useAuth } from "@/utils/AuthProvider";
 
 export default function Game() {
   const router = useRouter();
-  const { currentRoomUsers } = useAuth();
+  const { currentRoomUsers, gameStartTime } = useAuth();
 
   const handleBack = useCallback(() => {
     router.push("/home");
@@ -39,6 +39,25 @@ export default function Game() {
 
   const rankColors = ["bg-yellow-600", "bg-gray-400", "bg-amber-700"];
 
+  const [elapsed, setElapsed] = useState("");
+
+  useEffect(() => {
+    if (!gameStartTime) return;
+
+    const updateElapsed = () => {
+      const now = new Date();
+      const diffMs = now.getTime() - new Date(gameStartTime).getTime();
+      const minutes = Math.floor(diffMs / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      setElapsed(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+    };
+
+    updateElapsed();
+    const id = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(id);
+  }, [gameStartTime]);
+
   return (
     <View className="flex-1 gap-4 px-4 bg-background">
       {/* Custom Header */}
@@ -56,7 +75,19 @@ export default function Game() {
                   </Text>
                 </View>
               </View>
-              <Text className="text-xs text-secondary">{formatDate()}</Text>
+
+              {/* Date + live timer */}
+              <View className="flex-row items-center mt-1">
+                {gameStartTime && (
+                  <>
+                    <Text className="text-xs text-green-500">{elapsed}</Text>
+                    <View className="w-1.5 h-1.5 rounded-full bg-green-500 ml-1 mr-2" />
+
+                  </>
+                )}
+                <Text className="text-xs text-secondary">{formatDate()}</Text>
+
+              </View>
             </View>
           ),
           headerLeft: () => <View className="px-2" />,
