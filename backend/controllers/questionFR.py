@@ -14,7 +14,7 @@ openapi_tags = {
 
 api = APIRouter(prefix="/questionfr", tags=["QuestionsFR"])
 
-@api.get("/{room_id}", response_model=QuestionFR, tags=["QuestionsFR"])
+@api.get("/{room_id}", response_model=List[QuestionFR], tags=["QuestionsFR"])
 def get_questions(room_id: int, ques_svc: QuestionFRService = Depends(QuestionFRService)):
     return ques_svc.get_questions(room_id)
 
