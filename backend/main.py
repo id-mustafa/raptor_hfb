@@ -22,6 +22,7 @@ from .controllers import (
     room,
     question,
     player,
+    bet,
 )
 
 description = """
@@ -39,6 +40,7 @@ app = FastAPI(
         room.openapi_tags,
         question.openapi_tags,
         player.openapi_tags,
+        bet.openapi_tags,
     ],
 )
 
@@ -76,7 +78,7 @@ app.add_middleware(
 
 # ! Plug in each separate API file here (make sure to import above)
 # feature_apis = [team, auth, question, docs, submission, session_obj, problem, scores]
-feature_apis = [user, friend, request, room, question, player]
+feature_apis = [user, friend, request, room, question, player, bet]
 for feature_api in feature_apis:
     app.include_router(feature_api.api, prefix="/api")
 
