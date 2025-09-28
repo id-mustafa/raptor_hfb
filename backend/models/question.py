@@ -32,9 +32,7 @@ class Question(SQLModel, table=True):
     metric_value: float = Field()  # The threshold value (e.g., 250.5 yards)
 
     # Answer and resolution
-    answer: Optional[str] = Field(
-        default=None
-    )  # store the answer in the enum
+    answer: Optional[str] = Field(default=None)  # store the answer in the enum
     actual_value: Optional[float] = Field(default=None)  # Actual result when resolved
     multiplier: Optional[float] = Field(default=1.0)  # Payout multiplier
     is_resolved: bool = Field(default=False)
