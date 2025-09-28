@@ -9,6 +9,7 @@ import { useColorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import { AuthProvider } from '../utils/AuthProvider';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { LogBox } from 'react-native';
 
 export {
   ErrorBoundary,
@@ -20,6 +21,8 @@ export default function RootLayout() {
   useEffect(() => {
     setColorScheme('dark');
   }, []);
+
+  LogBox.ignoreAllLogs();
 
   return (
     <AuthProvider>

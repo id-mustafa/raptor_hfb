@@ -10,3 +10,4 @@ class Room(SQLModel, table=True):
     id: int = Field(primary_key=True)
     game_id: int = Field()
     players: List["User"] = Relationship(back_populates="room")
+    started: bool = Field(default=False)

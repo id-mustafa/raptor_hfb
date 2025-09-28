@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from fastapi import Depends, HTTPException
 from ..models.room import Room
 
+
 class RoomService:
     """Service for user operations"""
 
@@ -14,7 +15,13 @@ class RoomService:
         return self.db.exec(select(Room)).all()
 
     def create_room(self, game_id: int):
-        room =Room(game_id=game_id)
+        room = Room(game_id=game_id)
         self.db.add(room)
+        self.db.commit()
+        return room
+
+    def update_room(self, room_id: int, started: bool):
+        room = self.db.get(Room, room_id)
+        room.started = started
         self.db.commit()
         return room

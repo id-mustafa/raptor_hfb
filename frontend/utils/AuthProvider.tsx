@@ -23,8 +23,26 @@ import {
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
+  startGame as apiStartGame,
+  toggleRoomReady as apiToggleRoomReady,
+  normalizeRawQuestion,
 } from "@/api";
-import type { Room, User } from "@/api";
+import {
+  getAllQuestions,
+  startQuestions as apiStartQuestions,
+  updateUserTokens as apiUpdateUserTokens,
+} from "@/api/questions";
+import type { RawQuestion, Room, User } from "@/api";
+
+type Question = {
+  id: number;
+  question_text: string;
+  option_1: string;
+  option_2: string;
+  option_3: string;
+  option_4: string;
+  correct_answer: number;
+};
 
 type AuthContextType = {
   username: string | null;
@@ -49,12 +67,26 @@ type AuthContextType = {
   setCurrentRoomId: (id: number | null) => void;
   allUsers: User[];
   currentRoomUsers: User[];
-  // New: ability to control polling
   enablePolling: () => void;
   disablePolling: () => void;
   isPolling: boolean;
   gameStartTime: Date | null;
   setGameStartTime: (time: Date | null) => void;
+  setCurrentQuestion: (question: string | null) => void;
+  startGame: (roomId: number) => Promise<boolean>;
+  toggleRoomReady: (roomId: number, ready: boolean) => Promise<boolean>;
+
+  // ✅ New flag
+  hasNavigatedToGame: boolean;
+  setHasNavigatedToGame: (val: boolean) => void;
+
+  // Questions
+  questions: Question[];
+  currentQuestion: string | null;
+  options: string[];
+  correctAnswer: number | null;
+  startQuestions: () => Promise<void>;
+  updateUserTokens: (username: string, tokens: number) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,7 +102,6 @@ async function resolveUser(name: string) {
   }
 }
 
-// at the top of your AuthProvider file
 const avatars = [
   require("@/assets/images/avatar1.jpg"),
   require("@/assets/images/avatar2.jpg"),
@@ -79,7 +110,8 @@ const avatars = [
   require("@/assets/images/avatar5.jpg"),
 ];
 
-const POLLING_INTERVAL = 5000; // 5 seconds
+const POLLING_INTERVAL = 2500;
+const DEFAULT_POINTS = 200;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsernameState] = useState<string | null>(null);
@@ -95,43 +127,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPolling, setIsPolling] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
 
-  // Use refs to track polling state
+  const [hasNavigatedToGame, setHasNavigatedToGame] = useState(false);
+
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
+  const [correctAnswer, setCorrectAnswer] = useState<number | null>(null);
+
   const pollingIntervalRef = useRef<number | null>(null);
   const shouldPollRef = useRef(false);
 
-  // helper to assign avatars
-  const assignAvatars = (users: User[]) => {
-    return users.map((u, index) => ({
+  const assignAvatars = (users: User[]) =>
+    users.map((u, index) => ({
       ...u,
       avatar: avatars[index % avatars.length],
     }));
-  };
+
+  const normalizeOptions = (q: Question): string[] => [
+    q.option_1,
+    q.option_2,
+    q.option_3,
+    q.option_4,
+  ];
+
+  const normalizeAnswer = (q: Question): number | null =>
+    typeof q.correct_answer === "number" ? q.correct_answer - 1 : null;
+
+  const prevCountRef = useRef(0);
+
+  const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
 
   const fetchAll = useCallback(
     async (name: string, isPollingRequest = false) => {
-      // Don't set loading state for polling requests to avoid UI flicker
-      if (!isPollingRequest) {
-        setLoading(true);
-      }
-
+      if (!isPollingRequest) setLoading(true);
       try {
-        const [resolvedUser, friendList, requestList, roomList, allUsersList] =
-          await Promise.all([
-            resolveUser(name),
-            getFriends(name),
-            getIncomingRequests(name),
-            getRooms(),
-            getAllUsers(),
-          ]);
+        const [
+          resolvedUser,
+          friendList,
+          requestList,
+          roomList,
+          allUsersList,
+        ] = await Promise.all([
+          resolveUser(name),
+          getFriends(name),
+          getIncomingRequests(name),
+          getRooms(),
+          getAllUsers(),
+        ]);
 
-        setUser(resolvedUser);
-        if (resolvedUser.room_id) {
-          setCurrentRoomId(resolvedUser.room_id);
+        // ✅ Only update if different
+        setUser((prev) => (!deepEqual(prev, resolvedUser) ? resolvedUser : prev));
+
+        if (resolvedUser.room_id !== currentRoomId) {
+          setCurrentRoomId(resolvedUser.room_id ?? null);
         }
-        setFriends(friendList);
-        setIncomingRequests(requestList);
-        setRooms(roomList);
-        setAllUsers(assignAvatars(allUsersList.sort((a, b) => a.username.localeCompare(b.username))));
+        if (resolvedUser.tokens !== points) {
+          setPoints(resolvedUser.tokens ?? DEFAULT_POINTS);
+        }
+
+        setFriends((prev) => (!deepEqual(prev, friendList) ? friendList : prev));
+        setIncomingRequests((prev) =>
+          !deepEqual(prev, requestList) ? requestList : prev
+        );
+        setRooms((prev) => (!deepEqual(prev, roomList) ? roomList : prev));
+
+        const normalizedUsers = assignAvatars(
+          allUsersList.sort((a, b) => a.username.localeCompare(b.username))
+        );
+        setAllUsers((prev) =>
+          !deepEqual(prev, normalizedUsers) ? normalizedUsers : prev
+        );
+
+        if (resolvedUser.room_id) {
+          const rawQs = await getAllQuestions(resolvedUser.room_id.toString());
+          const normalizedQs = rawQs.map(normalizeRawQuestion);
+          setQuestions((prev) =>
+            !deepEqual(prev, normalizedQs) ? normalizedQs : prev
+          );
+        } else {
+          if (questions.length > 0) setQuestions([]);
+        }
+
         setError(null);
       } catch (err) {
         console.error("Failed to fetch auth data", err);
@@ -143,44 +219,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               : "Failed to reach the server";
         setError(message);
       } finally {
-        if (!isPollingRequest) {
-          setLoading(false);
-        }
+        if (!isPollingRequest) setLoading(false);
       }
     },
-    [],
+    [currentRoomId, points, questions.length]
   );
 
-  // Polling control functions
+
+  const startGameHandler = useCallback(async (roomId: number) => {
+    return await apiStartGame(roomId);
+  }, []);
+
+  const toggleRoomReadyHandler = useCallback(
+    async (roomId: number, ready: boolean) => {
+      const success = await apiToggleRoomReady(roomId, ready);
+      if (success && username) {
+        await fetchAll(username);
+      }
+      return success;
+    },
+    [username, fetchAll]
+  );
+
+  useEffect(() => {
+    if (!questions || questions.length === 0) return;
+    if (questions.length > prevCountRef.current) {
+      const newQ = questions[questions.length - 1];
+      setCurrentQuestion(newQ.question_text);
+      setOptions(normalizeOptions(newQ));
+      setCorrectAnswer(normalizeAnswer(newQ));
+      prevCountRef.current = questions.length;
+    }
+  }, [questions]);
+
+  const fetchAllRef = useRef(fetchAll);
+  useEffect(() => {
+    fetchAllRef.current = fetchAll;
+  }, [fetchAll]);
+
   const enablePolling = useCallback(() => {
     if (!username || pollingIntervalRef.current) return;
-
     shouldPollRef.current = true;
     setIsPolling(true);
-
     pollingIntervalRef.current = setInterval(() => {
       if (shouldPollRef.current && username) {
-        fetchAll(username, true);
+        fetchAllRef.current(username, true);
       }
     }, POLLING_INTERVAL);
-  }, [username, fetchAll]);
+  }, [username]);
 
   const disablePolling = useCallback(() => {
     shouldPollRef.current = false;
     setIsPolling(false);
-
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
   }, []);
 
-  // Clean up polling on component unmount or username change
-  useEffect(() => {
-    return () => {
-      disablePolling();
-    };
-  }, [disablePolling]);
+  useEffect(() => () => disablePolling(), [disablePolling]);
 
   const currentRoomUsers = useMemo(() => {
     if (!currentRoomId) return [];
@@ -195,32 +292,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRooms([]);
       setError(null);
       setLoading(false);
-      disablePolling(); // Stop polling when no username
+      disablePolling();
       return;
     }
-
     void fetchAll(username);
-    enablePolling(); // Start polling when username is set
+    enablePolling();
   }, [username, fetchAll, enablePolling, disablePolling]);
 
-  const handleSetUsername = useCallback((name: string | null) => {
-    setUsernameState(name);
-  }, []);
-
-  const refresh = useCallback(async () => {
-    if (!username) return;
-    await fetchAll(username);
-  }, [username, fetchAll]);
+  const handleSetUsername = useCallback((name: string | null) => setUsernameState(name), []);
+  const refresh = useCallback(async () => { if (username) await fetchAll(username); }, [username, fetchAll]);
 
   const createRoomForUser = useCallback(
     async (name: string) => {
       const room = await createRoom(name);
       if (username === name) {
         await fetchAll(name);
+        setHasNavigatedToGame(false); // reset flag
       }
       return room;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
   const joinRoomForUser = useCallback(
@@ -229,10 +320,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (success && username === name) {
         await fetchAll(name);
         setCurrentRoomId(roomId);
+        setHasNavigatedToGame(false); // reset flag
       }
       return success;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
   const leaveRoomForUser = useCallback(
@@ -241,41 +333,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (success && username === name) {
         await fetchAll(name);
         setCurrentRoomId(null);
+        setHasNavigatedToGame(false); // reset flag
       }
       return success;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
-  const sendRequest = useCallback(
-    async (from: string, to: string) => {
-      await sendFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
-      }
-    },
-    [fetchAll, username],
-  );
+  const sendRequest = useCallback(async (from: string, to: string) => {
+    await sendFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
 
-  const acceptRequestHandler = useCallback(
-    async (from: string, to: string) => {
-      await acceptFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
-      }
-    },
-    [fetchAll, username],
-  );
+  const acceptRequestHandler = useCallback(async (from: string, to: string) => {
+    await acceptFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
 
-  const declineRequestHandler = useCallback(
-    async (from: string, to: string) => {
-      await declineFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
+  const declineRequestHandler = useCallback(async (from: string, to: string) => {
+    await declineFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
+
+  const startQuestionsHandler = useCallback(async () => {
+    if (!currentRoomId) return;
+
+    // reset local state
+    setQuestions([]);
+    setCurrentQuestion(null);
+    setOptions([]);
+    setCorrectAnswer(null);
+
+    // 🔧 reset the counter that drives "new question" detection
+    prevCountRef.current = 0;
+
+    // reset everyone’s tokens, then start
+    for (const user of currentRoomUsers) {
+      if (user.tokens !== DEFAULT_POINTS) {
+        await apiUpdateUserTokens(user.username, DEFAULT_POINTS);
       }
-    },
-    [fetchAll, username],
-  );
+    }
+    await apiStartQuestions(currentRoomId.toString());
+  }, [currentRoomId, currentRoomUsers]);
+
+
+  useEffect(() => {
+    // new room or cleared room
+    prevCountRef.current = 0;
+  }, [currentRoomId]);
+
+  const updateUserTokens = useCallback(async (name: string, tokens: number) => {
+    await apiUpdateUserTokens(name, tokens);
+    if (username === name) {
+      setPoints(tokens);
+    }
+  }, [username]);
 
   const contextValue = useMemo(
     () => ({
@@ -306,6 +424,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPolling,
       gameStartTime,
       setGameStartTime,
+      questions,
+      currentQuestion,
+      options,
+      correctAnswer,
+      startQuestions: startQuestionsHandler,
+      updateUserTokens,
+      setCurrentQuestion,
+      startGame: startGameHandler,
+      toggleRoomReady: toggleRoomReadyHandler,
+      hasNavigatedToGame,
+      setHasNavigatedToGame,
     }),
     [
       username,
@@ -333,14 +462,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPolling,
       gameStartTime,
       setGameStartTime,
-    ],
+      questions,
+      currentQuestion,
+      options,
+      correctAnswer,
+      startQuestionsHandler,
+      updateUserTokens,
+      setCurrentQuestion,
+      startGameHandler,
+      toggleRoomReadyHandler,
+      hasNavigatedToGame,
+      setHasNavigatedToGame,
+    ]
   );
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

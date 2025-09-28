@@ -21,6 +21,7 @@ import { triggerSelectionHaptic } from "@/utils/Vibration";
 import { THEME } from "@/lib/theme";
 import { BackHandler } from "react-native";
 import { useAuth } from "@/utils/AuthProvider";
+import { toggleRoomReady } from "@/api/room";
 
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
@@ -112,7 +113,7 @@ export default function Lobby() {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleBack = useCallback(() => {
-    router.push("/home");
+    router.replace("/home");
     return true;
   }, [router]);
 
@@ -126,7 +127,18 @@ export default function Lobby() {
     }, [handleBack])
   );
 
-  const { currentRoomUsers, refresh, setGameStartTime } = useAuth();
+  const { currentRoomUsers, refresh, setGameStartTime, startQuestions, startGame, currentRoomId, rooms, hasNavigatedToGame, setHasNavigatedToGame } = useAuth();
+
+  useEffect(() => {
+    if (!currentRoomId || hasNavigatedToGame) return;
+    const room = rooms.find(r => r.id === currentRoomId);
+    if (room?.started) {
+      setGameStartTime(new Date());
+      setHasNavigatedToGame(true);
+      startQuestions();
+      router.replace("/game");
+    }
+  }, [rooms, currentRoomId, router, setGameStartTime, hasNavigatedToGame, setHasNavigatedToGame]);
 
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
@@ -277,7 +289,7 @@ export default function Lobby() {
         options={{
           title: `Lobby (${currentRoomUsers.length} players)`,
           headerLeft: () => (
-            <Pressable onPress={() => router.push("/home")}>
+            <Pressable onPress={() => router.replace("/home")}>
               <ChevronLeft size={24} color={THEME.dark.secondary} />
             </Pressable>
           )
@@ -300,7 +312,17 @@ export default function Lobby() {
           <Text className="font-normal">reset positions</Text>
         </Button>
 
-        <Button onPress={() => { setGameStartTime(new Date()); router.push("/game"); }} className="w-64 mb-20">
+        <Button
+          onPress={async () => {
+            if (!currentRoomId) return;
+            startGame(currentRoomId);
+            setGameStartTime(new Date());
+            startQuestions();
+            toggleRoomReady(currentRoomId, true);
+            router.replace("/game");
+          }}
+          className="w-64 mb-20"
+        >
           <Text>Start Game</Text>
         </Button>
       </View>

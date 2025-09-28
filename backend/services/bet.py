@@ -3,8 +3,7 @@ from sqlmodel import Session, select
 from fastapi import Depends, HTTPException
 from ..models.bet import Bet
 from ..models.user import User
-from ..models.question import Question
-from ..models.QuestionResolution import QuestionResolution
+from ..models.questionFR import QuestionFR
 from datetime import datetime
 from typing import List
 
@@ -15,28 +14,22 @@ class BetService:
     def __init__(self, db: Session = Depends(db_session)):
         self.db = db
 
-    def place_bet(
+    def create_bet(
         self,
         username: str,
         question_id: int,
-        user_answer: QuestionResolution,
+        user_answer: str,
         bet_amount: int,
     ) -> Bet:
         """Place a bet and deduct tokens from user"""
 
         # Validate question exists and betting is still open
         question = self.db.exec(
-            select(Question).where(Question.id == question_id)
+            select(QuestionFR).where(QuestionFR.id == question_id)
         ).first()
 
         if not question:
             raise HTTPException(404, "Question not found")
-
-        if question.is_resolved:
-            raise HTTPException(400, "Question already resolved")
-
-        if question.betting_deadline and question.betting_deadline <= datetime.now():
-            raise HTTPException(400, "Betting deadline has passed")
 
         # Check if user already has a bet on this question
         existing_bet = self.db.exec(
@@ -65,24 +58,25 @@ class BetService:
             bet_amount=bet_amount,
         )
 
+        user.tokens -= bet_amount
+
         # Save everything
         self.db.add(bet)
         self.db.commit()
-        self.db.refresh(bet)
+        self.db.refresh(user)
 
         return bet
 
-    def get_user_bets(self, username: str) -> List[Bet]:
+    def get_user_bets(self, identifier: str | int) -> List[Bet]:
         """Get all bets for a user"""
-        return self.db.exec(select(Bet).where(Bet.username == username)).all()
+        if type(identifier) == str:
+            return self.db.exec(select(Bet).where(Bet.username == identifier)).all()
+        elif type(identifier) == int:
+            return self.db.exec(select(Bet).where(Bet.id == identifier)).first()
+        else:
+            raise HTTPException(400, "Invalid identifier")
 
-    def get_user_active_bets(self, username: str) -> List[Bet]:
-        """Get unresolved bets for a user"""
-        return self.db.exec(
-            select(Bet).where(Bet.username == username, Bet.is_correct.is_(None))
-        ).all()
-
-    def get_bets_for_question(self, question_id: int) -> List[Bet]:
+    def get_bets_by_question_id(self, question_id: int) -> List[Bet]:
         """Get all bets for a specific question"""
         return self.db.exec(select(Bet).where(Bet.question_id == question_id)).all()
 
@@ -90,13 +84,13 @@ class BetService:
         """Get the summary of a bet for a specific question"""
         total_wins = 0
         total_losses = 0
-        bets = self.db.exec(
-            select(Bet).where(Bet.username == username and Bet.is_correct is not None)
-        ).all()
-
+        bets = self.db.exec(select(Bet).where(Bet.username == username)).all()
         for b in bets:
-            if b.is_correct:
-                total_wins += b.bet_amount
+            question = self.db.exec(
+                select(QuestionFR).where(QuestionFR.id == b.question_id)
+            ).first()
+            if question.answer == b.user_answer:
+                total_wins += b.bet_amount * 2
             else:
                 total_losses += b.bet_amount
 
@@ -107,7 +101,13 @@ class BetService:
             "total_amount_bet": total_wins + total_losses,
             "total_profit": total_wins - total_losses,
             "total_profit_percentage": (
-                (total_wins - total_losses) / total_wins + total_losses
-            )
-            * 100,
+                (
+                    (total_wins - total_losses) / (total_wins + total_losses)
+                    if total_wins + total_losses != 0
+                    else 1
+                )
+                * 100
+                if (total_wins + total_losses) != 0
+                else 0
+            ),
         }

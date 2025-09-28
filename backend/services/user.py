@@ -16,7 +16,7 @@ class UserService:
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         return user
-    
+
     def create_user(self, username: str):
         self.db.add(User(username=username, room_id=None))
         self.db.commit()
@@ -35,5 +35,13 @@ class UserService:
             raise HTTPException(status_code=404, detail="Room not found")
         room.players.append(user)
         self.db.add(room)
+        self.db.commit()
+        return user
+
+    def update_user_tokens(self, username: str, tokens: int):
+        user = self.db.exec(select(User).where(User.username == username)).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.tokens = tokens
         self.db.commit()
         return user

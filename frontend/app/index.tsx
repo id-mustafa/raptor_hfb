@@ -21,7 +21,7 @@ export default function Login() {
   const handleLogin = useCallback(() => {
     //if (!input.trim()) return;
     setUsername(input.trim());
-    router.push('/home');
+    router.replace('/home');
   }, [input, router, setUsername]);
 
   return (
@@ -34,7 +34,7 @@ export default function Login() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, gap: 16 }}>
           <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
-          <Text className="text-2xl font-bold mb-16">Login to Raptor</Text>
+          <Text className="text-2xl font-bold mb-16">Login to RexBets</Text>
 
           <View className="w-80 gap-2">
             <Text className="text-lg font-medium">Username</Text>
