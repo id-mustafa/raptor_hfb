@@ -128,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (resolvedUser.room_id) {
           setCurrentRoomId(resolvedUser.room_id);
         }
+        if (resolvedUser.tokens) {
+          setPoints(resolvedUser.tokens);
+        }
         setFriends(friendList);
         setIncomingRequests(requestList);
         setRooms(roomList);
