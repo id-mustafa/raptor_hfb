@@ -4,15 +4,14 @@ from ..models.usertofriend import UserToFriend
 from ..models.user import User
 from typing import List
 
-api = APIRouter(prefix="", tags=["friend"])
-
 openapi_tags = {
-    "name": "Users",
-    "description": "Routes used for user management",
+    "name": "Friends",
+    "description": "Routes used for friend management",
 }
 
+api = APIRouter(prefix="", tags=["Friends"])
 
-@api.get("/{username}/friends", response_model=List[User], tags=["friend"])
+@api.get("/{username}/friends", response_model=List[User], tags=["Friends"])
 async def get_friends(
     username: str, friend_svc: FriendService = Depends(FriendService)
 ):

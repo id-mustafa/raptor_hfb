@@ -7,15 +7,14 @@ from ..services.request import RequestService
 from ..models.request import Request
 from fastapi import HTTPException
 
-api = APIRouter(prefix="", tags=["request"])
-
 openapi_tags = {
-    "name": "Users",
-    "description": "Routes used for user management",
+    "name": "Requests",
+    "description": "Routes used for request management",
 }
+api = APIRouter(prefix="", tags=["Requests"])
 
 
-@api.post("/{username1}/request/{username2}", response_model=Request, tags=["request"])
+@api.post("/{username1}/request/{username2}", response_model=Request, tags=["Requests"])
 async def send_request(
     username1: str,
     username2: str,
@@ -29,7 +28,7 @@ async def send_request(
     return result
 
 
-@api.get("/{username}/request", response_model=List[User], tags=["request"])
+@api.get("/{username}/request", response_model=List[User], tags=["Requests"])
 async def get_requests(
     username: str,
     request_svc: RequestService = Depends(RequestService),
@@ -37,7 +36,7 @@ async def get_requests(
     return request_svc.get_requests(username)
 
 
-@api.post("/{username2}/accept/{username1}", response_model=Request, tags=["request"])
+@api.post("/{username2}/accept/{username1}", response_model=Request, tags=["Requests"])
 async def accept_request(
     username1: str,
     username2: str,
@@ -46,7 +45,7 @@ async def accept_request(
     return request_svc.accept_request(username1, username2)
 
 
-@api.post("/{username2}/decline/{username1}", response_model=Request, tags=["request"])
+@api.post("/{username2}/decline/{username1}", response_model=Request, tags=["Requests"])
 async def decline_request(
     username1: str,
     username2: str,

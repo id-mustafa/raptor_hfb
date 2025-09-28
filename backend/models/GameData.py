@@ -1,5 +1,5 @@
 from sqlmodel import Field, SQLModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -15,7 +15,7 @@ class GameData(SQLModel, table=True):
     __tablename__ = "game_data"
 
     # Primary fields
-    game_key: str = Field(primary_key=True, alias="GameKey")
+    game_key: Optional[str] = Field(default=None, primary_key=True, alias="GameKey")
     season_type: int = Field(alias="SeasonType")
     season: int = Field(alias="Season")
     week: int = Field(alias="Week")

@@ -1,0 +1,10 @@
+:{$PORT}
+encode gzip
+
+# API goes to Uvicorn on 4402
+@api path /api/*
+reverse_proxy @api 127.0.0.1:4402
+
+# Everything else is static files
+root * /srv/www
+file_server

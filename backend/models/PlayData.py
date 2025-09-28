@@ -1,10 +1,11 @@
 from sqlmodel import Field, SQLModel
 from typing import List, Optional
+from sqlalchemy import Column, JSON
 from datetime import datetime
 from .PlayStatsData import PlayStatsData
 
 
-class PlayData(SQLModel, table=True):
+class PlayData(SQLModel, table=False):
     """
     This model stores individual play data for the Raptor HFB.
 
@@ -45,7 +46,7 @@ class PlayData(SQLModel, table=True):
     is_scoring_play: bool = Field(alias="IsScoringPlay")
     scoring_play: Optional[str] = Field(default=None, alias="ScoringPlay")
 
-    # Related play stats (stored as JSON or separate table relationship)
-    # Note: In a real database, you'd typically handle this as a separate table
-    # with a foreign key relationship rather than storing as JSON
-    play_stats: List[PlayStatsData] = Field(default=[], alias="PlayStats")
+    # Related play stats (store as JSON; details also exist in PlayStatsData table)
+    play_stats: Optional[list] = Field(
+        default=None, sa_column=Column(JSON), alias="PlayStats"
+    )
