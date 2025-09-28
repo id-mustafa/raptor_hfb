@@ -1,0 +1,4 @@
+# Production Procfile for Render
+web: caddy run --config Caddyfile.prod
+backend: uvicorn --host 0.0.0.0 --port 4402 backend.main:app
+frontend: cd frontend && npm start -- --port 4401

@@ -1,0 +1,39 @@
+services:
+  # Main web service
+  - type: web
+    name: raptor-hfb
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    branch: main
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Set this manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: NODE_VERSION
+        value: "22"
+    healthCheckPath: /api/docs
+
+  # PostgreSQL database
+  - type: pserv
+    name: raptor-hfb-db
+    env: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile.db
+    envVars:
+      - key: POSTGRES_DB
+        value: raptor_hfb
+      - key: POSTGRES_USER
+        value: raptor_user
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+
+databases:
+  - name: raptor-hfb-postgres
+    databaseName: raptor_hfb
+    user: raptor_user
+    plan: starter
+    region: oregon

@@ -1,35 +1,46 @@
 from sqlmodel import Field, SQLModel
 from datetime import datetime
 from typing import Optional
+from .PlayerMetricType import PlayerMetricType
+from .QuestionResolution import QuestionType
+from .QuestionResolution import QuestionResolution
 
 
 class Question(SQLModel, table=True):
     """
-    This model is used to store the question for the Raptor HFB.
+    Player betting question model for the Raptor HFB.
+    All questions are about player performance metrics.
     """
 
     __tablename__ = "question"
 
-    id: int = Field(primary_key=True)
-    game_id: int = Field(foreign_key="game.id", ondelete="CASCADE")
+    id: int = Field(default=None, primary_key=True)
+    game_id: str = Field(foreign_key="game_data.game_key")
+
+    # Question details
     question: str = Field()
-    question_type: str = Field(default="over_under")
-    answer: Optional[str] = Field(default=None)
-    multiplier: Optional[int] = Field(default=None)
-    is_resolved: Optional[bool] = Field(default=False)
-    entity_type: Optional[str] = Field(default=None)  # player, team, game
-    entity_id: Optional[int] = Field(
-        foreign_key="player.id", ondelete="CASCADE", default=None
-    )  # player id, team id, game id
-    entity_id: Optional[int] = Field(
-        foreign_key="team.id", ondelete="CASCADE", default=None
-    )  # player id, team id, game id
-    entity_id: Optional[int] = Field(
-        foreign_key="game.id", ondelete="CASCADE", default=None
-    )  # player id, team id, game id
-    entity_name: Optional[str] = Field(
+    question_type: QuestionType = Field(default=QuestionType.OVER_UNDER)
+    # Player being bet on
+    player_id: int = Field(
+        foreign_key="player.id", ondelete="CASCADE"
+    )  # Required - the player this question is about
+
+    # Metric being tracked
+    metric_type: PlayerMetricType = (
+        Field()
+    )  # "passing_yards", "rushing_yards", "touchdowns", etc.
+    metric_value: float = Field()  # The threshold value (e.g., 250.5 yards)
+
+    # Answer and resolution
+    answer: Optional[QuestionResolution] = Field(
         default=None
-    )  # player name, team name, game name
+    )  # store the answer in the enum
+    actual_value: Optional[float] = Field(default=None)  # Actual result when resolved
+    multiplier: Optional[float] = Field(default=1.0)  # Payout multiplier
+    is_resolved: bool = Field(default=False)
+
+    # Betting window
+    betting_deadline: Optional[datetime] = Field(default=None)  # When betting closes
 
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
