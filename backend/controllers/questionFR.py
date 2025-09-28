@@ -4,7 +4,7 @@ from fastapi import Depends
 from typing import List
 from ..services.questionFR import QuestionFRService
 from ..models.questionFR import QuestionFR
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import BackgroundTasks
 import asyncio
 
 openapi_tags = {
