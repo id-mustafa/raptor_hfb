@@ -203,7 +203,7 @@ export default function Question() {
           <Timer duration={QUESTION_DURATION} />
 
           <Text className="text-2xl text-center text-secondary-foreground my-8">
-            {currentQuestion ?? 'No question available'}
+            {currentQuestion ?? 'Who is most likely to score the next goal?'}
           </Text>
 
           {/* answers */}
