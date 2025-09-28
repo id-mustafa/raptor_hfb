@@ -1,15 +1,79 @@
-### Raptor HFB
+# Rex Bets - Raptor HFB
+*High-frequency social betting in real-time*
 
-Crazy good bets (in real time high frequency format)
+Rex Bets transforms sports betting from a solo grind into competitive multiplayer sessions. Think of it as bringing the energy of live betting to your friend group, with real-time questions and strategic point wagering during games.
 
-### For frontend folks:
+## How It Works
 
-Here is how to work with the new project. As you can see, we have packaged the frontend and backend into a cohesive monolith using a docker container. You know should have access to the application and the same ports.
+Create or join lobbies with up to 5 players. During live games, you'll get rapid-fire multiple choice questions about what happens next. Place your bets, choose your confidence level, and watch the points flow. Smart players use the multiplier system to maximize gains on high-confidence plays.
 
-You can see which ports are allocated for backend and frontend at the [Caddyfile](./Caddyfile) reverse proxy setup.
+Your points persist across sessions – build your bankroll over time and climb the leaderboards.
 
-To run the frontend and the backend, you may just run the command "honcho start."
+## Tech Stack
 
-To view the Swagger documentation of our backend endpoints, just run the project with "honcho start" and then append "/docs" to the localhost url...i.e. (localhost:4402/docs) should point you to our swagger documented APIs for you to interact with.
+- **Frontend**: React Native for cross-platform mobile
+- **Backend**: FastAPI with automatic documentation 
+- **Database**: Supabase PostgreSQL with real-time subscriptions
+- **Real-time**: WebSocket connections for sub-second multiplayer sync
+- **Deployment**: Dockerized containers, cloud-hosted
 
-Alot of these APIs have been created so feel free to code-surf to gain understanding until we meet again.
+## Quick Start
+
+```bash
+# Start everything (frontend + backend + database)
+honcho start
+```
+
+That's it. The reverse proxy setup in `Caddyfile` handles routing between services.
+
+**API Documentation**: Once running, hit `localhost:4402/docs` for the full Swagger interface. All endpoints are documented and interactive.
+
+## Architecture
+
+The system handles high-frequency betting through:
+
+- **Real-time synchronization**: WebSocket connections ensure all players see questions simultaneously
+- **Multiplier algorithm**: Dynamic risk/reward calculations based on wager amount and question difficulty  
+- **Persistent state**: Points and performance tracked across sessions
+- **Scalable infrastructure**: Container-based deployment ready for load
+
+## Game Mechanics
+
+1. **Lobby System**: 5-player maximum, private rooms
+2. **Question Engine**: Multiple choice questions triggered during key game moments
+3. **Betting Interface**: Choose answer + point wager in seconds
+4. **Scoring System**: Correct predictions earn multiplied points, wrong bets lose the wager
+5. **Leaderboards**: Real-time ranking updates
+
+## Development
+
+### Project Structure
+```
+rex-bets/
+├── frontend/         # React Native app
+├── backend/          # FastAPI server
+├── docker-compose.yml
+├── Procfile         # Process definitions
+└── Caddyfile        # Reverse proxy config
+```
+
+### Key Features
+- Sub-second multiplayer synchronization
+- Mobile-optimized betting interface  
+- Advanced data visualization beyond basic charts
+- Fabricated sports data pipeline (real APIs are expensive)
+- Anti-exploit measures for fair play
+
+## Roadmap
+
+- Live sports API integration
+- Tournament and seasonal modes
+- Advanced analytics dashboard
+- Mobile push notifications
+- Enhanced anti-cheat systems
+
+Built during a hackathon to solve the social gap in current betting platforms. No real money involved – just the thrill of outplaying your friends with better predictions.
+
+---
+
+**Ready to run it?** `honcho start` and navigate to your localhost to begin.
