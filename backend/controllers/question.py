@@ -3,29 +3,28 @@ from ..services.question import QuestionService
 from ..models.question import Question
 from typing import List
 
-api = APIRouter(prefix="/question", tags=["question"])
-
 openapi_tags = {
     "name": "Question",
     "description": "Routes used for question management",
 }
 
+api = APIRouter(prefix="/question", tags=openapi_tags)
 
-@api.post("/create", response_model=Question, tags=["question"])
+@api.post("/create", response_model=Question, tags=openapi_tags)
 async def create_question(
     question: Question, question_svc: QuestionService = Depends(QuestionService)
 ):
     return question_svc.create_question(question)
 
 
-@api.get("/{game_id}", response_model=List[Question], tags=["question"])
+@api.get("/{game_id}", response_model=List[Question], tags=openapi_tags)
 async def get_questions(
     game_id: int, question_svc: QuestionService = Depends(QuestionService)
 ):
     return question_svc.get_questions(game_id)
 
 
-@api.put("/{question_id}", response_model=Question, tags=["question"])
+@api.put("/{question_id}", response_model=Question, tags=openapi_tags)
 async def update_question(
     question_id: int,
     question: Question,
@@ -34,7 +33,7 @@ async def update_question(
     return question_svc.update_question(question_id, question)
 
 
-@api.post("/{question_id}/resolve", response_model=Question, tags=["question"])
+@api.post("/{question_id}/resolve", response_model=Question, tags=openapi_tags)
 async def resolve_question(
     question_id: int,
     actual_value: float,
@@ -43,7 +42,7 @@ async def resolve_question(
     return question_svc.solve_question(question_id, actual_value)
 
 
-@api.get("/{question_id}", response_model=Question, tags=["question"])
+@api.get("/{question_id}", response_model=Question, tags=openapi_tags)
 async def get_question(
     question_id: int, question_svc: QuestionService = Depends(QuestionService)
 ):

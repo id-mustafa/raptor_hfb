@@ -14,7 +14,7 @@ class Question(SQLModel, table=True):
 
     __tablename__ = "question"
 
-    id: int = Field(default=None, primary_key=True)
+    id: int = Field(primary_key=True)
     game_id: str = Field(foreign_key="game_data.game_key")
 
     # Question details
