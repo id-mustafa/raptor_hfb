@@ -11,6 +11,7 @@ import {
 import { useCallback, useState, useEffect } from "react";
 import { Trophy } from "lucide-react-native";
 import { useAuth } from "@/utils/AuthProvider";
+import playByPlay from "@/assets/play-by-play.json";
 
 export default function Game() {
   const router = useRouter();
@@ -40,6 +41,54 @@ export default function Game() {
   const rankColors = ["bg-yellow-600", "bg-gray-400", "bg-amber-700"];
 
   const [elapsed, setElapsed] = useState("");
+  const [score, setScore] = useState({ lakers: 0, celtics: 0 });
+
+  const toElapsedSeconds = (timestamp: string) => {
+    const [mm, ss] = timestamp.split(":").map(Number);
+    // game clock counts down from 12:00 → 0
+    const secondsRemaining = mm * 60 + ss;
+    const quarterLength = 12 * 60;
+    return quarterLength - secondsRemaining;
+  };
+
+  useEffect(() => {
+    if (!gameStartTime) return;
+
+    const updateElapsed = () => {
+      const now = new Date();
+      const diffMs = now.getTime() - new Date(gameStartTime).getTime();
+      const minutes = Math.floor(diffMs / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      const elapsedStr = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      setElapsed(elapsedStr);
+
+      // compute elapsed seconds since tip-off
+      const elapsedSec = minutes * 60 + seconds;
+
+      // find the last play at or before this elapsed time
+      let currentPlay = { lakersPoints: 0, celticsPoints: 0 };
+      for (const play of playByPlay) {
+        const playSec = toElapsedSeconds(play.timestamp);
+        if (playSec <= elapsedSec) {
+          currentPlay = {
+            lakersPoints: play.lakersPoints,
+            celticsPoints: play.celticsPoints,
+          };
+        } else {
+          break;
+        }
+      }
+      setScore({
+        lakers: currentPlay.lakersPoints,
+        celtics: currentPlay.celticsPoints,
+      });
+    };
+
+    updateElapsed();
+    const id = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(id);
+  }, [gameStartTime]);
 
   useEffect(() => {
     if (!gameStartTime) return;
@@ -85,7 +134,7 @@ export default function Game() {
 
                   </>
                 )}
-                <Text className="text-xs text-secondary">{formatDate()}</Text>
+                <Text className="text-xs text-secondary">January 23rd, 2025</Text>
 
               </View>
             </View>
@@ -106,7 +155,9 @@ export default function Game() {
               className="h-16 w-16 rounded-full"
             />
             <View className="items-center">
-              <Text className="text-2xl font-bold text-foreground">0 - 0</Text>
+              <Text className="text-2xl font-bold text-foreground">
+                {score.lakers} - {score.celtics}
+              </Text>
               <Text className="text-sm text-secondary">Q1</Text>
             </View>
             <Image
