@@ -31,7 +31,7 @@ async def create_room(
     room = room_svc.create_room(game_id=1)
     print(room.id)
     user_svc.update_user_room(username, room.id)
-    return room.id
+    return room
 
 
 @api.post("/join/{room_id}", response_model=bool, tags=["Rooms"])
