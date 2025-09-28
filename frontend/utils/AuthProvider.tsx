@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 
@@ -48,6 +49,10 @@ type AuthContextType = {
   setCurrentRoomId: (id: number | null) => void;
   allUsers: User[];
   currentRoomUsers: User[];
+  // New: ability to control polling
+  enablePolling: () => void;
+  disablePolling: () => void;
+  isPolling: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,6 +77,7 @@ const avatars = [
   require("@/assets/images/avatar5.jpg"),
 ];
 
+const POLLING_INTERVAL = 5000; // 5 seconds
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsernameState] = useState<string | null>(null);
@@ -84,18 +90,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [points, setPoints] = useState<number>(100);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [currentRoomId, setCurrentRoomId] = useState<number | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
+  // Use refs to track polling state
+  const pollingIntervalRef = useRef<number | null>(null);
+  const shouldPollRef = useRef(false);
 
   // helper to assign avatars
-const assignAvatars = (users: User[]) => {
-  return users.map((u, index) => ({
-    ...u,
-    avatar: avatars[index % avatars.length],
-  }));
-};
+  const assignAvatars = (users: User[]) => {
+    return users.map((u, index) => ({
+      ...u,
+      avatar: avatars[index % avatars.length],
+    }));
+  };
 
   const fetchAll = useCallback(
-    async (name: string) => {
-      setLoading(true);
+    async (name: string, isPollingRequest = false) => {
+      // Don't set loading state for polling requests to avoid UI flicker
+      if (!isPollingRequest) {
+        setLoading(true);
+      }
+      
       try {
         const [resolvedUser, friendList, requestList, roomList, allUsersList] =
           await Promise.all([
@@ -125,11 +140,44 @@ const assignAvatars = (users: User[]) => {
             : "Failed to reach the server";
         setError(message);
       } finally {
-        setLoading(false);
+        if (!isPollingRequest) {
+          setLoading(false);
+        }
       }
     },
     [],
   );
+
+  // Polling control functions
+  const enablePolling = useCallback(() => {
+    if (!username || pollingIntervalRef.current) return;
+    
+    shouldPollRef.current = true;
+    setIsPolling(true);
+    
+    pollingIntervalRef.current = setInterval(() => {
+      if (shouldPollRef.current && username) {
+        fetchAll(username, true); // Pass true to indicate this is a polling request
+      }
+    }, POLLING_INTERVAL);
+  }, [username, fetchAll]);
+
+  const disablePolling = useCallback(() => {
+    shouldPollRef.current = false;
+    setIsPolling(false);
+    
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Clean up polling on component unmount or username change
+  useEffect(() => {
+    return () => {
+      disablePolling();
+    };
+  }, [disablePolling]);
 
   const currentRoomUsers = useMemo(() => {
     if (!currentRoomId) return [];
@@ -144,10 +192,13 @@ const assignAvatars = (users: User[]) => {
       setRooms([]);
       setError(null);
       setLoading(false);
+      disablePolling(); // Stop polling when no username
       return;
     }
+    
     void fetchAll(username);
-  }, [username, fetchAll]);
+    enablePolling(); // Start polling when username is set
+  }, [username, fetchAll, enablePolling, disablePolling]);
 
   const handleSetUsername = useCallback((name: string | null) => {
     setUsernameState(name);
@@ -247,6 +298,9 @@ const assignAvatars = (users: User[]) => {
       setCurrentRoomId,
       allUsers,
       currentRoomUsers,
+      enablePolling,
+      disablePolling,
+      isPolling,
     }),
     [
       username,
@@ -269,6 +323,9 @@ const assignAvatars = (users: User[]) => {
       currentRoomId,
       allUsers,
       currentRoomUsers,
+      enablePolling,
+      disablePolling,
+      isPolling,
     ],
   );
 
