@@ -7,7 +7,7 @@ class PlayStatsData(SQLModel, table=True):
     __tablename__ = "play_stats_data"
 
     # Primary fields
-    play_stat_id: int = Field(primary_key=True, alias="PlayStatID")
+    play_stat_id: Optional[int] = Field(default=None, primary_key=True, alias="PlayStatID")
     play_id: int = Field(alias="PlayID")
     sequence: int = Field(alias="Sequence")
     player_id: int = Field(alias="PlayerID")

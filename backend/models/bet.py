@@ -1,11 +1,11 @@
 from sqlmodel import Field, SQLModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from .QuestionResolution import QuestionResolution
 
 
 class Bet(SQLModel, table=True):
-    id: int = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(foreign_key="user.username", ondelete="CASCADE")
     question_id: int = Field(
         foreign_key="question.id", ondelete="CASCADE"

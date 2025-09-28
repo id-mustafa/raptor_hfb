@@ -1,6 +1,6 @@
 from sqlmodel import Field, SQLModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from .PlayerMetricType import PlayerMetricType
 from .QuestionResolution import QuestionType
 from .QuestionResolution import QuestionResolution
@@ -14,7 +14,7 @@ class Question(SQLModel, table=True):
 
     __tablename__ = "question"
 
-    id: int = Field(primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     game_id: str = Field(foreign_key="game_data.game_key")
 
     # Question details
@@ -32,7 +32,7 @@ class Question(SQLModel, table=True):
     metric_value: float = Field()  # The threshold value (e.g., 250.5 yards)
 
     # Answer and resolution
-    answer: Optional[QuestionResolution] = Field(
+    answer: Optional[str] = Field(
         default=None
     )  # store the answer in the enum
     actual_value: Optional[float] = Field(default=None)  # Actual result when resolved

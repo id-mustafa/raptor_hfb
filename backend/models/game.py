@@ -1,9 +1,10 @@
 from sqlmodel import Field, SQLModel
+from typing import Optional
 from datetime import datetime
 
 
 class Game(SQLModel, table=True):
-    id: int = Field(primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field()
     start_time: datetime = Field()
     end_time: datetime = Field()
