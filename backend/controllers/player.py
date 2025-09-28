@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from ..services.player import PlayerService
-from ..models.player import Player
+from ..models.Player import Player
 from typing import List
 
 openapi_tags = {
