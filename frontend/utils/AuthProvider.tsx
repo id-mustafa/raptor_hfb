@@ -155,6 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const prevCountRef = useRef(0);
 
+  const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+
   const fetchAll = useCallback(
     async (name: string, isPollingRequest = false) => {
       if (!isPollingRequest) setLoading(true);
@@ -173,24 +175,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           getAllUsers(),
         ]);
 
-        setUser(resolvedUser);
-        if (resolvedUser.room_id) setCurrentRoomId(resolvedUser.room_id);
-        if (resolvedUser.tokens) setPoints(resolvedUser.tokens);
+        // ✅ Only update if different
+        setUser((prev) => (!deepEqual(prev, resolvedUser) ? resolvedUser : prev));
 
-        setFriends(friendList);
-        setIncomingRequests(requestList);
-        setRooms(roomList);
-        setAllUsers(
-          assignAvatars(
-            allUsersList.sort((a, b) => a.username.localeCompare(b.username))
-          )
+        if (resolvedUser.room_id !== currentRoomId) {
+          setCurrentRoomId(resolvedUser.room_id ?? null);
+        }
+        if (resolvedUser.tokens !== points) {
+          setPoints(resolvedUser.tokens ?? DEFAULT_POINTS);
+        }
+
+        setFriends((prev) => (!deepEqual(prev, friendList) ? friendList : prev));
+        setIncomingRequests((prev) =>
+          !deepEqual(prev, requestList) ? requestList : prev
+        );
+        setRooms((prev) => (!deepEqual(prev, roomList) ? roomList : prev));
+
+        const normalizedUsers = assignAvatars(
+          allUsersList.sort((a, b) => a.username.localeCompare(b.username))
+        );
+        setAllUsers((prev) =>
+          !deepEqual(prev, normalizedUsers) ? normalizedUsers : prev
         );
 
-        if (currentRoomId) {
-          const rawQs = await getAllQuestions(currentRoomId.toString());
-          setQuestions(rawQs.map(normalizeRawQuestion));
+        if (resolvedUser.room_id) {
+          const rawQs = await getAllQuestions(resolvedUser.room_id.toString());
+          const normalizedQs = rawQs.map(normalizeRawQuestion);
+          setQuestions((prev) =>
+            !deepEqual(prev, normalizedQs) ? normalizedQs : prev
+          );
         } else {
-          setQuestions([]);
+          if (questions.length > 0) setQuestions([]);
         }
 
         setError(null);
@@ -207,8 +222,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isPollingRequest) setLoading(false);
       }
     },
-    [currentRoomId]
+    [currentRoomId, points, questions.length]
   );
+
 
   const startGameHandler = useCallback(async (roomId: number) => {
     return await apiStartGame(roomId);
