@@ -21,11 +21,9 @@ type ApiRequestInit = Omit<RequestInit, 'body'> & {
   searchParams?: SearchParams;
 };
 
-const fallbackBaseUrl = 'http://localhost:4402/';
-const envBaseUrl =
+const envBaseUrl = 
   process.env.EXPO_PUBLIC_API_URL ||
-  (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ||
-  fallbackBaseUrl;
+  (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl || "";
 
 const normalizedBaseUrl = envBaseUrl.endsWith('/') ? envBaseUrl : `${envBaseUrl}/`;
 

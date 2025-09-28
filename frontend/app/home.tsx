@@ -1,5 +1,12 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { ScrollView, View, Pressable, RefreshControl } from "react-native";
+import {
+  Platform,
+  Keyboard,
+  Pressable,
+  RefreshControl,
+  View,
+  BackHandler,
+} from "react-native";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -12,9 +19,10 @@ import { Check, X } from "lucide-react-native";
 import { joinRoom } from "@/api";
 import { navigate } from "expo-router/build/global-state/routing";
 import { THEME } from "@/lib/theme";
-import { BackHandler } from "react-native";
+import { Input } from "@/components/ui/input";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-const USE_DUMMY_DATA = true;
+const USE_DUMMY_DATA = false;
 
 type RoomLike = {
   id: number;
@@ -36,9 +44,11 @@ export default function Home() {
 
   useFocusEffect(
     useCallback(() => {
-      const subscription = BackHandler.addEventListener("hardwareBackPress", handleBack);
-      return () =>
-        subscription.remove();
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
+      return () => subscription.remove();
     }, [handleBack])
   );
 
@@ -52,28 +62,25 @@ export default function Home() {
     refresh,
     acceptRequest,
     declineRequest,
+    sendRequest,
   } = useAuth();
 
-  const dummyFriends = [
-    {
-      username: "Alice",
-    },
-    {
-      username: "Bob",
-    },
-    {
-      username: "Charlie",
-    },
-  ];
+  const [newFriend, setNewFriend] = useState("");
 
-  const dummyRequests = [
-    { username: "David" },
-    { username: "Eve" },
-  ];
+  const handleSendRequest = async () => {
+    if (!username || !newFriend.trim()) return;
+    try {
+      await sendRequest(username, newFriend.trim());
+      setNewFriend("");
+      await refresh();
+    } catch (err) {
+      console.error("Failed to send request:", err);
+    }
+  };
 
-  const dummyRooms: RoomLike[] = [
-    { id: 1, participants: [{ username: "Bob" }] },
-  ];
+  const dummyFriends = [{ username: "Alice" }, { username: "Bob" }, { username: "Charlie" }];
+  const dummyRequests = [{ username: "David" }, { username: "Eve" }];
+  const dummyRooms: RoomLike[] = [{ id: 1, participants: [{ username: "Bob" }] }];
 
   const effectiveFriends = USE_DUMMY_DATA ? dummyFriends : friends;
   const effectiveRequests = USE_DUMMY_DATA ? dummyRequests : incomingRequests;
@@ -102,16 +109,13 @@ export default function Home() {
           .filter((n): n is string => Boolean(n));
       }
       if (Array.isArray(room.users)) {
-        return room.users
-          .map((u: any) => u?.username)
-          .filter((n): n is string => Boolean(n));
+        return room.users.map((u: any) => u?.username).filter((n): n is string => Boolean(n));
       }
       if (Array.isArray(room.members)) {
         return room.members
           .map((m: any) => (typeof m === "string" ? m : m?.username))
           .filter((n): n is string => Boolean(n));
       }
-
       const owners: string[] = [];
       if (room.owner) owners.push(room.owner);
       if (room.host) owners.push(room.host);
@@ -163,37 +167,32 @@ export default function Home() {
   const sortedFriends = [...effectiveFriends].sort((a, b) => {
     const aInRoom = friendToRoom.get(a.username) ? 1 : 0;
     const bInRoom = friendToRoom.get(b.username) ? 1 : 0;
-
     if (aInRoom !== bInRoom) return bInRoom - aInRoom;
     return a.username.localeCompare(b.username);
   });
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       className="flex-1 bg-background"
       contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid
+      extraScrollHeight={Platform.OS === "ios" ? 64 : 80}
     >
       <View className="flex-1 items-center gap-6 p-4 flex flex-col">
         <Stack.Screen
           options={{
             title: `Welcome${username ? `, ${username}` : ""}`,
             headerLeft: () => (
-              <Pressable onPress={() => router.push('/')}>
+              <Pressable onPress={() => router.push("/")}>
                 <ChevronLeft size={24} color={THEME.dark.secondary} />
               </Pressable>
-            )
+            ),
           }}
         />
 
-        {loading && !USE_DUMMY_DATA && (
-          <Text className="text-muted-foreground">Loading…</Text>
-        )}
-        {error && !USE_DUMMY_DATA && (
-          <Text className="text-destructive">{error}</Text>
-        )}
+        {error && !USE_DUMMY_DATA && <Text className="text-destructive">{error}</Text>}
 
         <CreateLobbyCard navigateLobby={() => router.push("/lobby")} />
 
@@ -212,18 +211,12 @@ export default function Home() {
                   <Pressable
                     key={friend.username}
                     className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
-                    onPress={
-                      room ? () => handleJoinRoom(room.id) : undefined
-                    }
+                    onPress={room ? () => handleJoinRoom(room.id) : undefined}
                   >
-                    <Text className="text-base text-foreground">
-                      {friend.username}
-                    </Text>
+                    <Text className="text-base text-foreground">{friend.username}</Text>
                     {room ? (
                       <Text className="text-sm font-medium text-green-600">
-                        {joiningRoomId === room.id
-                          ? "Joining…"
-                          : `In Room #${room.id}`}
+                        {joiningRoomId === room.id ? "Joining…" : `In Room #${room.id}`}
                       </Text>
                     ) : (
                       <Text className="text-sm text-secondary">Offline</Text>
@@ -241,22 +234,30 @@ export default function Home() {
             <CardTitle>Friend Requests</CardTitle>
           </CardHeader>
           <CardContent className="gap-2">
+            <View className="flex-row items-center gap-2 mb-2">
+              <Input
+                value={newFriend}
+                onChangeText={setNewFriend}
+                placeholder="Enter username"
+                className="flex-1 border border-muted rounded-md px-3 py-2 text-foreground"
+                placeholderTextColor="#888"
+              />
+              <Button onPress={handleSendRequest}>
+                <Text>Send</Text>
+              </Button>
+            </View>
             {effectiveRequests.length === 0 ? (
               <Text className="text-muted-foreground">No pending requests</Text>
             ) : (
               effectiveRequests.map((req) => {
-                const isAccepting =
-                  processingReq === `${req.username}-accept`;
-                const isDeclining =
-                  processingReq === `${req.username}-decline`;
+                const isAccepting = processingReq === `${req.username}-accept`;
+                const isDeclining = processingReq === `${req.username}-decline`;
                 return (
                   <View
                     key={req.username}
                     className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
                   >
-                    <Text className="text-base text-foreground">
-                      {req.username}
-                    </Text>
+                    <Text className="text-base text-foreground">{req.username}</Text>
                     <View className="flex-row">
                       <Button
                         size="icon"
@@ -264,11 +265,7 @@ export default function Home() {
                         onPress={() => handleAccept(req.username)}
                         disabled={isAccepting || isDeclining}
                       >
-                        {isAccepting ? (
-                          <Text>…</Text>
-                        ) : (
-                          <Icon as={Check} />
-                        )}
+                        {isAccepting ? <Text>…</Text> : <Icon as={Check} />}
                       </Button>
                       <Button
                         size="icon"
@@ -286,6 +283,6 @@ export default function Home() {
           </CardContent>
         </Card>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }

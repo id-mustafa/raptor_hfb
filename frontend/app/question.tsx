@@ -166,7 +166,7 @@ export default function Question() {
       <Animated.View className="absolute inset-0 items-center justify-center">
         <Animated.View className="w-32 h-32 rounded-full bg-primary absolute" style={circleStyle} />
         <Animated.View style={{ opacity: fadeTimer }} className="absolute top-0 left-0 right-0">
-          <Timer duration={PREP_DURATION} primary={false} />
+          <Timer duration={PREP_DURATION - 100} primary={false} />
         </Animated.View>
         <Animated.Text className="text-4xl font-bold text-background" style={{ opacity: fadeAccent }}>
           Get Ready
