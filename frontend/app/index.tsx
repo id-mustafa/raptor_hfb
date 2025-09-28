@@ -21,7 +21,7 @@ export default function Login() {
   const handleLogin = useCallback(() => {
     //if (!input.trim()) return;
     setUsername(input.trim());
-    router.push('/home');
+    router.replace('/home');
   }, [input, router, setUsername]);
 
   return (

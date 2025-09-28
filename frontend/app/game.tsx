@@ -18,7 +18,7 @@ export default function Game() {
   const { currentRoomUsers, gameStartTime, currentQuestion, currentRoomId, toggleRoomReady } = useAuth();
 
   const handleBack = useCallback(() => {
-    router.push("/home");
+    router.replace("/home");
     return true;
   }, [router]);
 
@@ -36,7 +36,7 @@ export default function Game() {
 
   useEffect(() => {
     if (pathname === "/game" && currentQuestion) {
-      router.push("/question");
+      router.replace("/question");
     }
   }, [currentQuestion, pathname, router]);
 
@@ -200,7 +200,7 @@ export default function Game() {
 
       {/* Actions */}
       <Button
-        onPress={() => router.push("/question")}
+        onPress={() => router.replace("/question")}
         className="w-full mt-auto"
       >
         <Text>Start Question</Text>
@@ -210,7 +210,7 @@ export default function Game() {
           if (currentRoomId) {
             toggleRoomReady(currentRoomId, false);
           }
-          router.push("/recap")
+          router.replace("/recap")
         }}
         className="w-full -mt-2 mb-16"
         variant="ghost"

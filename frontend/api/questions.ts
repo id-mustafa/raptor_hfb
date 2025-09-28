@@ -2,7 +2,7 @@ import { apiClient } from "./client";
 import type { Question, RawQuestion } from "./types";
 
 // Toggle this to enable/disable mocks
-export const USE_MOCKED = true;
+export const USE_MOCKED = false;
 
 // --- MOCK SETUP ---
 let mockQuestions: RawQuestion[] = [];
@@ -15,7 +15,7 @@ function createMockRawQuestion(id: number, room_id = 1): RawQuestion {
         room_id,
         question: `Who missed a 25-foot three point jumper?`,
         options: `LeBron_Porzingis_Davis_Tatum`,
-        answer: Math.floor(Math.random() * 4) + 1,
+        answer: 4,
     };
 }
 

@@ -25,7 +25,7 @@ export default function Recap() {
   }, [gameStartTime]);
 
   const handleBack = useCallback(() => {
-    router.push("/home");
+    router.replace("/home");
     return true;
   }, [router]);
 
@@ -52,7 +52,7 @@ export default function Recap() {
         options={{
           title: "Game Summary",
           headerLeft: () => (
-            <Pressable onPress={() => router.push("/home")}>
+            <Pressable onPress={() => router.replace("/home")}>
               <ChevronLeft size={24} color={THEME.dark.secondary} />
             </Pressable>
           ),
@@ -173,12 +173,12 @@ export default function Recap() {
 
         {/* Action Buttons */}
         <View className="gap-3 mb-24">
-          <Button onPress={() => router.push("/lobby")} className="w-full">
+          <Button onPress={() => router.replace("/lobby")} className="w-full">
             <Text>Play Again</Text>
           </Button>
 
           <Button
-            onPress={() => router.push("/home")}
+            onPress={() => router.replace("/home")}
             className="w-full"
             variant="outline"
           >

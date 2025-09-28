@@ -113,7 +113,7 @@ export default function Lobby() {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleBack = useCallback(() => {
-    router.push("/home");
+    router.replace("/home");
     return true;
   }, [router]);
 
@@ -136,7 +136,7 @@ export default function Lobby() {
       setGameStartTime(new Date());
       setHasNavigatedToGame(true);
       startQuestions();
-      router.push("/game");
+      router.replace("/game");
     }
   }, [rooms, currentRoomId, router, setGameStartTime, hasNavigatedToGame, setHasNavigatedToGame]);
 
@@ -289,7 +289,7 @@ export default function Lobby() {
         options={{
           title: `Lobby (${currentRoomUsers.length} players)`,
           headerLeft: () => (
-            <Pressable onPress={() => router.push("/home")}>
+            <Pressable onPress={() => router.replace("/home")}>
               <ChevronLeft size={24} color={THEME.dark.secondary} />
             </Pressable>
           )
@@ -319,7 +319,7 @@ export default function Lobby() {
             setGameStartTime(new Date());
             startQuestions();
             toggleRoomReady(currentRoomId, true);
-            router.push("/game");
+            router.replace("/game");
           }}
           className="w-64 mb-20"
         >

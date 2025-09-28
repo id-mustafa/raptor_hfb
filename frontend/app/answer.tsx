@@ -20,7 +20,7 @@ export default function BetResult() {
   const router = useRouter();
 
   const handleBack = useCallback(() => {
-    router.push("/game");
+    router.replace("/game");
     return true;
   }, [router]);
 
@@ -34,7 +34,7 @@ export default function BetResult() {
     }, [handleBack])
   );
 
-  const { setPoints, correctAnswer, options, setCurrentQuestion } = useAuth();
+  const { setPoints, correctAnswer, options, setCurrentQuestion, username, updateUserTokens } = useAuth();
   const { selection, bet, oldPoints } = useLocalSearchParams<{
     selection?: string;
     bet?: string;
@@ -54,11 +54,11 @@ export default function BetResult() {
   // Animate point updates
   const animatedPoints = useSharedValue(prevPoints);
 
+  // answer.tsx
   useEffect(() => {
     if (betWasPlaced) {
       const timer = setTimeout(() => {
-        const isCorrect =
-          correctAnswer !== null && chosenIndex === correctAnswer;
+        const isCorrect = correctAnswer !== null && chosenIndex === correctAnswer;
         const chosenResult = isCorrect ? 'correct' : 'incorrect';
         setResult(chosenResult);
         setPhase('result');
@@ -72,8 +72,18 @@ export default function BetResult() {
 
         const delta = isCorrect ? wager : -wager;
         const targetPoints = prevPoints + delta;
+
+        // ✅ local state
         setPoints(targetPoints);
 
+        // ✅ update backend here
+        if (username && targetPoints != prevPoints) {
+          updateUserTokens(username, targetPoints).catch(err =>
+            console.error("Failed to update points", err)
+          );
+        }
+
+        // animate counter
         setTimeout(() => {
           animatedPoints.value = withTiming(targetPoints, {
             duration: 2000,
@@ -93,6 +103,7 @@ export default function BetResult() {
     correctAnswer,
     prevPoints,
   ]);
+
 
   const animatedText = useDerivedValue(() => {
     return Math.round(animatedPoints.value).toString();
@@ -138,7 +149,7 @@ export default function BetResult() {
             {!betWasPlaced && (
               <Button className="w-64 mb-24" onPress={() => {
                 setCurrentQuestion(null);
-                router.push('/game')
+                router.replace('/game')
               }} variant="secondary">
                 <Text>Back to Game</Text>
               </Button>
@@ -165,7 +176,7 @@ export default function BetResult() {
             </View>
             <Button className="w-64 mb-24" onPress={() => {
               setCurrentQuestion(null);
-              router.push('/game')
+              router.replace('/game')
             }} variant="dark">
               <Text>Back to Game</Text>
             </Button>

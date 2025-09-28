@@ -40,7 +40,7 @@ export default function Home() {
   const router = useRouter();
 
   const handleBack = useCallback(() => {
-    router.push("/");
+    router.replace("/");
     return true;
   }, [router]);
 
@@ -139,7 +139,7 @@ export default function Home() {
       setJoiningRoomId(roomId);
       const ok = await joinRoomForUser(username, roomId);
       if (ok) {
-        router.push("/lobby");
+        router.replace("/lobby");
       }
     } finally {
       setJoiningRoomId(null);
@@ -177,8 +177,6 @@ export default function Home() {
     return a.username.localeCompare(b.username);
   });
 
-  const showSpinner = loading || joiningRoomId !== null || processingReq !== null;
-
   return (
     <>
       <KeyboardAwareScrollView
@@ -194,14 +192,12 @@ export default function Home() {
             options={{
               title: `Welcome${username ? `, ${username}` : ""}`,
               headerLeft: () => (
-                <Pressable onPress={() => router.push("/")}>
+                <Pressable onPress={() => router.replace("/")}>
                   <ChevronLeft size={24} color={THEME.dark.secondary} />
                 </Pressable>
               ),
             }}
           />
-
-          {error && !USE_DUMMY_DATA && <Text className="text-destructive">{error}</Text>}
 
           <CreateLobbyCard
             navigateLobby={async () => {
@@ -209,7 +205,7 @@ export default function Home() {
               try {
                 setLoading(true);
                 const room = await createRoomForUser(username);
-                router.push("/lobby");
+                router.replace("/lobby");
               } catch (err) {
                 console.error("Failed to create room", err);
               } finally {
@@ -306,8 +302,7 @@ export default function Home() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Fullscreen Spinner Overlay */}
-      <Modal transparent visible={showSpinner} animationType="fade">
+      <Modal transparent visible={loading} animationType="fade">
         <View
           style={{
             flex: 1,

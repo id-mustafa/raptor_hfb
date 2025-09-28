@@ -110,7 +110,7 @@ const avatars = [
   require("@/assets/images/avatar5.jpg"),
 ];
 
-const POLLING_INTERVAL = 5000;
+const POLLING_INTERVAL = 2500;
 const DEFAULT_POINTS = 200;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -127,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPolling, setIsPolling] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
 
-  // ✅ New flag
   const [hasNavigatedToGame, setHasNavigatedToGame] = useState(false);
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -201,8 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           err instanceof ApiError
             ? err.message
             : err instanceof Error
-            ? err.message
-            : "Failed to reach the server";
+              ? err.message
+              : "Failed to reach the server";
         setError(message);
       } finally {
         if (!isPollingRequest) setLoading(false);
@@ -347,24 +346,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchAll, username]);
 
   const startQuestionsHandler = useCallback(async () => {
-    if (!currentRoomId) {
-      console.warn("Cannot start questions without a valid room ID");
-      return;
-    }
+    if (!currentRoomId) return;
 
+    // reset local state
     setQuestions([]);
     setCurrentQuestion(null);
     setOptions([]);
     setCorrectAnswer(null);
 
+    // 🔧 reset the counter that drives "new question" detection
+    prevCountRef.current = 0;
+
+    // reset everyone’s tokens, then start
     for (const user of currentRoomUsers) {
       if (user.tokens !== DEFAULT_POINTS) {
         await apiUpdateUserTokens(user.username, DEFAULT_POINTS);
       }
     }
-
     await apiStartQuestions(currentRoomId.toString());
   }, [currentRoomId, currentRoomUsers]);
+
+
+  useEffect(() => {
+    // new room or cleared room
+    prevCountRef.current = 0;
+  }, [currentRoomId]);
 
   const updateUserTokens = useCallback(async (name: string, tokens: number) => {
     await apiUpdateUserTokens(name, tokens);
