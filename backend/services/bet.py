@@ -51,10 +51,10 @@ class BetService:
         if not user:
             raise HTTPException(404, "User not found")
 
-        if user.balance < bet_amount:
+        if user.tokens < bet_amount:
             raise HTTPException(
                 400,
-                f"Insufficient tokens. You have {user.balance}, need {bet_amount}",
+                f"Insufficient tokens. You have {user.tokens}, need {bet_amount}",
             )
 
         # Create the bet

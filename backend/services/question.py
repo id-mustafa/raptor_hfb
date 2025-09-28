@@ -147,7 +147,7 @@ class QuestionService:
                 select(User).where(User.username == bet.username)
             ).first()
             if user:
-                user.balance = int(user.balance + bet.outcome)
+                user.tokens = int(user.tokens + bet.outcome)
                 self.db.add(user)
                 self.db.add(bet)
             else:
