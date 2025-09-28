@@ -1,12 +1,22 @@
-import React, { useEffect, useRef, useMemo, useCallback, useState } from "react";
-import { View, Dimensions, Pressable, RefreshControl, ScrollView, ImageSourcePropType } from "react-native";
+import React, { useEffect, useRef, useCallback, useState } from "react";
+import {
+  View,
+  Dimensions,
+  Pressable,
+  ScrollView,
+  ImageSourcePropType,
+} from "react-native";
 import Matter from "matter-js";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { ChevronLeft, RefreshCcw } from "lucide-react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { SharedValue, useSharedValue, useAnimatedStyle, runOnJS } from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  runOnJS,
+} from "react-native-reanimated";
 import { triggerSelectionHaptic } from "@/utils/Vibration";
 import { THEME } from "@/lib/theme";
 import { BackHandler } from "react-native";
@@ -19,39 +29,90 @@ const MAX_VELOCITY = 15;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HEIGHT_OFFSET = 200;
 
-type Player = {
-  id: string;
-  username: string;
-  avatar: ImageSourcePropType;
-};
+//
+// 👤 Avatar component (manages its own useSharedValue)
+//
+const PlayerAvatar = React.memo<{
+  player: { username: string; avatar: ImageSourcePropType };
+  bodyRef: React.MutableRefObject<Record<string, Matter.Body>>;
+}>(({ player, bodyRef }) => {
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
 
-const PlayerAvatar = React.memo<{ position: { x: SharedValue<number>; y: SharedValue<number> }; source: ImageSourcePropType }>(
-  ({ position, source }) => {
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ translateX: position.x.value }, { translateY: position.y.value }],
-    }));
-    return (
-      <Animated.View className="absolute" style={[{ width: AVATAR_SIZE, height: AVATAR_SIZE }, animatedStyle]}>
-        <Animated.Image source={source} className="w-full h-full" style={{ borderRadius: AVATAR_RADIUS }} />
-      </Animated.View>
-    );
-  }
-);
-
-const PlayerName = React.memo<{ name: string; position: { x: SharedValue<number>; y: SharedValue<number> } }>(({ name, position }) => {
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: position.x.value }, { translateY: position.y.value + AVATAR_SIZE }],
+    transform: [{ translateX: x.value }, { translateY: y.value }],
   }));
+
+  // keep reanimated values in sync with Matter.js body
+  useEffect(() => {
+    const id = requestAnimationFrame(function loop() {
+      const body = bodyRef.current[player.username];
+      if (body) {
+        x.value = body.position.x - AVATAR_RADIUS;
+        y.value = body.position.y - AVATAR_RADIUS;
+      }
+      requestAnimationFrame(loop);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [player.username, bodyRef, x, y]);
+
   return (
-    <Animated.View className="absolute items-center" style={[{ width: AVATAR_SIZE, paddingTop: 4 }, animatedStyle]}>
-      <Text className="font-bold text-lg text-foreground bg-background px-2 rounded">{name}</Text>
+    <Animated.View
+      className="absolute"
+      style={[{ width: AVATAR_SIZE, height: AVATAR_SIZE }, animatedStyle]}
+    >
+      <Animated.Image
+        source={player.avatar}
+        className="w-full h-full"
+        style={{ borderRadius: AVATAR_RADIUS }}
+      />
     </Animated.View>
   );
 });
 
+//
+// 🏷️ Name label component
+//
+const PlayerName = React.memo<{
+  player: { username: string };
+  bodyRef: React.MutableRefObject<Record<string, Matter.Body>>;
+}>(({ player, bodyRef }) => {
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }, { translateY: y.value + AVATAR_SIZE }],
+  }));
+
+  useEffect(() => {
+    const id = requestAnimationFrame(function loop() {
+      const body = bodyRef.current[player.username];
+      if (body) {
+        x.value = body.position.x - AVATAR_RADIUS;
+        y.value = body.position.y - AVATAR_RADIUS;
+      }
+      requestAnimationFrame(loop);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [player.username, bodyRef, x, y]);
+
+  return (
+    <Animated.View
+      className="absolute items-center"
+      style={[{ width: AVATAR_SIZE, paddingTop: 4 }, animatedStyle]}
+    >
+      <Text className="font-bold text-lg text-foreground bg-background px-2 rounded">
+        {player.username}
+      </Text>
+    </Animated.View>
+  );
+});
+
+//
+// 🏟️ Main Lobby Screen
+//
 export default function Lobby() {
   const router = useRouter();
-
   const [refreshing, setRefreshing] = useState(false);
 
   const handleBack = useCallback(() => {
@@ -61,20 +122,18 @@ export default function Lobby() {
 
   useFocusEffect(
     useCallback(() => {
-      const subscription = BackHandler.addEventListener("hardwareBackPress", handleBack);
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        handleBack
+      );
       return () => subscription.remove();
     }, [handleBack])
   );
 
   const { currentRoomUsers, refresh } = useAuth();
 
-  // Physics + animation setup
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
-
-  const animatedPositions: Record<string, { x: SharedValue<number>; y: SharedValue<number> }> = Object.fromEntries(
-    currentRoomUsers.map((p) => [p.username, { x: useSharedValue(0), y: useSharedValue(0) }])
-  );
 
   const draggedBodyId = useSharedValue<string | null>(null);
   const dragOffset = useSharedValue({ dx: 0, dy: 0 });
@@ -94,7 +153,10 @@ export default function Lobby() {
     currentRoomUsers.forEach((p, index) => {
       const row = Math.floor(index / cols);
       const col = index % cols;
-      const numInRow = row === rows - 1 && currentRoomUsers.length % cols !== 0 ? currentRoomUsers.length % cols : cols;
+      const numInRow =
+        row === rows - 1 && currentRoomUsers.length % cols !== 0
+          ? currentRoomUsers.length % cols
+          : cols;
       const rowWidth = numInRow * AVATAR_SIZE + (numInRow - 1) * spacingX;
       const startX = (containerWidth - rowWidth) / 2 + AVATAR_RADIUS;
       const x = startX + col * (AVATAR_SIZE + spacingX);
@@ -106,8 +168,6 @@ export default function Lobby() {
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
       }
-      animatedPositions[p.username].x.value = x - AVATAR_RADIUS;
-      animatedPositions[p.username].y.value = y - AVATAR_RADIUS;
     });
   }, [currentRoomUsers]);
 
@@ -120,16 +180,43 @@ export default function Lobby() {
     const containerHeight = SCREEN_HEIGHT - HEIGHT_OFFSET;
 
     const walls = [
-      Matter.Bodies.rectangle(SCREEN_WIDTH / 2, -thickness / 2, SCREEN_WIDTH, thickness, { isStatic: true }),
-      Matter.Bodies.rectangle(SCREEN_WIDTH / 2, containerHeight + thickness / 2, SCREEN_WIDTH, thickness, { isStatic: true }),
-      Matter.Bodies.rectangle(-thickness / 2, containerHeight / 2, thickness, containerHeight, { isStatic: true }),
-      Matter.Bodies.rectangle(SCREEN_WIDTH + thickness / 2, containerHeight / 2, thickness, containerHeight, { isStatic: true }),
+      Matter.Bodies.rectangle(
+        SCREEN_WIDTH / 2,
+        -thickness / 2,
+        SCREEN_WIDTH,
+        thickness,
+        { isStatic: true }
+      ),
+      Matter.Bodies.rectangle(
+        SCREEN_WIDTH / 2,
+        containerHeight + thickness / 2,
+        SCREEN_WIDTH,
+        thickness,
+        { isStatic: true }
+      ),
+      Matter.Bodies.rectangle(
+        -thickness / 2,
+        containerHeight / 2,
+        thickness,
+        containerHeight,
+        { isStatic: true }
+      ),
+      Matter.Bodies.rectangle(
+        SCREEN_WIDTH + thickness / 2,
+        containerHeight / 2,
+        thickness,
+        containerHeight,
+        { isStatic: true }
+      ),
     ];
     Matter.World.add(world, walls);
 
     const bodies: Record<string, Matter.Body> = {};
     currentRoomUsers.forEach((p) => {
-      const body = Matter.Bodies.circle(0, 0, AVATAR_RADIUS, { restitution: 0.9, frictionAir: 0.03 });
+      const body = Matter.Bodies.circle(0, 0, AVATAR_RADIUS, {
+        restitution: 0.9,
+        frictionAir: 0.03,
+      });
       bodies[p.username] = body;
       Matter.World.add(world, body);
     });
@@ -140,32 +227,7 @@ export default function Lobby() {
     const runner = Matter.Runner.create();
     Matter.Runner.run(runner, engine);
 
-    let frameId: number;
-    const gameLoop = () => {
-      if (draggedBodyId.value) {
-        const body = bodiesRef.current[draggedBodyId.value];
-        if (body) {
-          let targetX = fingerPosition.value.x - dragOffset.value.dx;
-          let targetY = fingerPosition.value.y - dragOffset.value.dy;
-          targetX = Math.max(AVATAR_RADIUS, Math.min(targetX, SCREEN_WIDTH - AVATAR_RADIUS));
-          targetY = Math.max(AVATAR_RADIUS, Math.min(targetY, containerHeight - AVATAR_RADIUS));
-          Matter.Body.setPosition(body, { x: targetX, y: targetY });
-          Matter.Body.setVelocity(body, { x: 0, y: 0 });
-        }
-      }
-      for (const p of currentRoomUsers) {
-        const body = bodiesRef.current[p.username];
-        if (body) {
-          animatedPositions[p.username].x.value = body.position.x - AVATAR_RADIUS;
-          animatedPositions[p.username].y.value = body.position.y - AVATAR_RADIUS;
-        }
-      }
-      frameId = requestAnimationFrame(gameLoop);
-    };
-    gameLoop();
-
     return () => {
-      cancelAnimationFrame(frameId);
       Matter.Runner.stop(runner);
       Matter.World.clear(world, false);
       Matter.Engine.clear(engine);
@@ -214,10 +276,7 @@ export default function Lobby() {
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{ flexGrow: 1 }}
-    >
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ flexGrow: 1 }}>
       <Stack.Screen
         options={{
           title: `Lobby (${currentRoomUsers.length} players)`,
@@ -237,10 +296,10 @@ export default function Lobby() {
       <GestureDetector gesture={panGesture}>
         <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - HEIGHT_OFFSET }}>
           {currentRoomUsers.map((p) => (
-            <PlayerAvatar key={p.username} position={animatedPositions[p.username]} source={p.avatar} />
-          ))}
-          {currentRoomUsers.map((p) => (
-            <PlayerName key={`${p.username}-name`} name={p.username} position={animatedPositions[p.username]} />
+            <React.Fragment key={p.username}>
+              <PlayerAvatar player={p} bodyRef={bodiesRef} />
+              <PlayerName player={p} bodyRef={bodiesRef} />
+            </React.Fragment>
           ))}
         </View>
       </GestureDetector>

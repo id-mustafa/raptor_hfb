@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     pollingIntervalRef.current = setInterval(() => {
       if (shouldPollRef.current && username) {
-        fetchAll(username, true); // Pass true to indicate this is a polling request
+        fetchAll(username, true);
       }
     }, POLLING_INTERVAL);
   }, [username, fetchAll]);
