@@ -1,4 +1,4 @@
-# Rex Bets - Raptor HFB
+# Welcome to Rex Bets
 *High-frequency social betting in real-time*
 
 Rex Bets transforms sports betting from a solo grind into competitive multiplayer sessions. Think of it as bringing the energy of live betting to your friend group, with real-time questions and strategic point wagering during games.
