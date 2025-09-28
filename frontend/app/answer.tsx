@@ -100,7 +100,7 @@ export default function BetResult() {
 
   const circleStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(revealProgress.value, [0, 1], [-3, 8]) },
+      { scale: interpolate(revealProgress.value, [0, 1], [0, 8]) },
     ],
     opacity: 1,
   }));

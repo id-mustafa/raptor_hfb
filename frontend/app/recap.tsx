@@ -1,164 +1,13 @@
+// recap.tsx
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { View, Pressable, BackHandler, ScrollView } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  ChevronLeft,
-  Trophy,
-  Crown,
-  Medal,
-  Award,
-  TrendingUp,
-  Users,
-  Clock,
-  Target,
-} from "lucide-react-native";
+import { ChevronLeft, Trophy, Clock, Target, Users } from "lucide-react-native";
 import { THEME } from "@/lib/theme";
-import { useCallback, useMemo, useEffect, useState } from "react";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withSequence,
-  withDelay,
-} from "react-native-reanimated";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/utils/AuthProvider";
-
-const AnimatedCard = Animated.createAnimatedComponent(Card);
-const AnimatedView = Animated.createAnimatedComponent(View);
-
-// --- Helpers for mock data ---
-const getRandomAccuracy = () => {
-  const values = [70, 80, 90, 100];
-  return values[Math.floor(Math.random() * values.length)];
-};
-
-const getRandomStreak = () => {
-  const values = [1, 2, 3, 4];
-  return values[Math.floor(Math.random() * values.length)];
-};
-
-// Performance Bar Component
-const PerformanceBar = ({
-  value,
-  maxValue,
-  color,
-  delay,
-}: {
-  value: number;
-  maxValue: number;
-  color: string;
-  delay: number;
-}) => {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withDelay(delay, withSpring(value / maxValue));
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
-
-  return (
-    <View className="h-2 bg-muted/30 rounded-full overflow-hidden">
-      <Animated.View
-        className={`h-full ${color} rounded-full`}
-        style={animatedStyle}
-      />
-    </View>
-  );
-};
-
-// Leaderboard Item Component
-const LeaderboardItem = ({
-  player,
-  rank,
-  delay,
-}: {
-  player: any;
-  rank: number;
-  delay: number;
-}) => {
-  const slideIn = useSharedValue(50);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.8);
-
-  useEffect(() => {
-    slideIn.value = withDelay(delay, withSpring(0));
-    opacity.value = withDelay(delay, withTiming(1, { duration: 600 }));
-    scale.value = withDelay(delay, withSpring(1));
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slideIn.value }, { scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  const getRankIcon = () => {
-    switch (rank) {
-      case 1:
-        return <Crown size={24} color="#FFD700" />;
-      case 2:
-        return <Medal size={24} color="#C0C0C0" />;
-      case 3:
-        return <Award size={24} color="#CD7F32" />;
-      default:
-        return (
-          <View className="w-8 h-8 items-center justify-center rounded-full bg-muted">
-            <Text className="text-sm font-bold text-muted-foreground">
-              {rank}
-            </Text>
-          </View>
-        );
-    }
-  };
-
-  const getRankColor = () => {
-    switch (rank) {
-      case 1:
-        return "border-l-yellow-500 bg-yellow-50/10";
-      case 2:
-        return "border-l-gray-400 bg-gray-50/10";
-      case 3:
-        return "border-l-orange-600 bg-orange-50/10";
-      default:
-        return "border-l-muted bg-muted/5";
-    }
-  };
-
-  return (
-    <AnimatedView style={animatedStyle}>
-      <View
-        className={`flex-row items-center p-4 mb-3 rounded-xl border-l-4 ${getRankColor()}`}
-      >
-        <View className="mr-4">{getRankIcon()}</View>
-
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-lg font-bold text-foreground">
-              {player.username}
-            </Text>
-            <Text className="text-xl font-bold text-primary">
-              {player.tokens}
-            </Text>
-          </View>
-
-          <View className="flex-row justify-between text-sm">
-            <Text className="text-muted-foreground">
-              Accuracy: {player.accuracy}%
-            </Text>
-            <Text className="text-muted-foreground">
-              Streak: {player.streak}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </AnimatedView>
-  );
-};
 
 export default function Recap() {
   const router = useRouter();
@@ -168,31 +17,12 @@ export default function Recap() {
 
   useEffect(() => {
     if (!gameStartTime) return;
-
-    // When recap opens, freeze the elapsed time
     const now = new Date();
     const diffMs = now.getTime() - new Date(gameStartTime).getTime();
     const minutes = Math.floor(diffMs / 60000);
     const seconds = Math.floor((diffMs % 60000) / 1000);
     setElapsed(`${minutes}:${seconds.toString().padStart(2, "0")}`);
   }, [gameStartTime]);
-
-  const [playersWithStats, setPlayersWithStats] = useState<any[]>([]);
-
-  useEffect(() => {
-    // Assign mock stats only once when recap loads
-    const withStats = currentRoomUsers.map((p) => ({
-      ...p,
-      accuracy: getRandomAccuracy(),
-      streak: getRandomStreak(),
-    }));
-    setPlayersWithStats(withStats.sort((a, b) => b.tokens - a.tokens));
-  }, [currentRoomUsers]);
-
-  // Animations
-  const headerScale = useSharedValue(0);
-  const headerOpacity = useSharedValue(0);
-  const confettiScale = useSharedValue(0);
 
   const handleBack = useCallback(() => {
     router.push("/home");
@@ -209,28 +39,12 @@ export default function Recap() {
     }, [handleBack])
   );
 
-  useEffect(() => {
-    headerScale.value = withSpring(1, { damping: 20, stiffness: 90 }); // smoother, less bounce
-    headerOpacity.value = withTiming(1, { duration: 600 }); // fade in a bit faster
-    confettiScale.value = withSequence(
-      withDelay(400, withSpring(1.05, { damping: 18, stiffness: 100 })), // tiny pop, less bounce
-      withSpring(1, { damping: 20, stiffness: 90 })
-    );
-  }, []);
-
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: headerScale.value }],
-    opacity: headerOpacity.value,
-  }));
-
-  const confettiAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: confettiScale.value }],
-  }));
-
-
-  const sortedPlayers = playersWithStats;
+  const sortedPlayers = [...currentRoomUsers].sort(
+    (a, b) => b.tokens - a.tokens
+  );
   const winner = sortedPlayers[0];
-  const maxPoints = Math.max(...(sortedPlayers.map((p) => p.tokens) || [0]));
+
+  const rankColors = ["bg-yellow-600", "bg-gray-400", "bg-amber-700"];
 
   return (
     <View className="flex-1 bg-background">
@@ -247,10 +61,8 @@ export default function Recap() {
 
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         {/* Celebration Header */}
-        <AnimatedView style={headerAnimatedStyle} className="items-center py-8">
-          <AnimatedView style={confettiAnimatedStyle} className="mb-4">
-            <Text className="text-6xl">🎉</Text>
-          </AnimatedView>
+        <View className="items-center py-8">
+          <Text className="text-6xl mb-4">🎉</Text>
           <Text className="text-3xl font-bold text-center text-foreground mb-2">
             Game Complete!
           </Text>
@@ -262,15 +74,14 @@ export default function Recap() {
           <Text className="text-lg text-center text-muted-foreground mt-2">
             Duration: {elapsed || "0:00"}
           </Text>
-        </AnimatedView>
+        </View>
 
         {/* Winner Spotlight */}
         {winner && (
-          <AnimatedCard className="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
+          <Card className="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
             <CardHeader>
               <View className="flex-row items-center justify-center">
-                <Crown size={24} color="#FFD700" />
-                <CardTitle className="ml-2 text-xl">🏆 MVP Player</CardTitle>
+                <CardTitle className="ml-2 text-xl">MVP Player</CardTitle>
               </View>
             </CardHeader>
             <CardContent className="items-center">
@@ -280,16 +91,8 @@ export default function Recap() {
               <Text className="text-3xl font-bold text-yellow-500 mb-2">
                 {winner.tokens} Points
               </Text>
-              <View className="flex-row gap-4">
-                <Text className="text-muted-foreground">
-                  {winner.accuracy}% Accuracy
-                </Text>
-                <Text className="text-muted-foreground">
-                  {winner.streak} Max Streak
-                </Text>
-              </View>
             </CardContent>
-          </AnimatedCard>
+          </Card>
         )}
 
         {/* Game Statistics */}
@@ -326,53 +129,43 @@ export default function Recap() {
           </CardContent>
         </Card>
 
-        {/* Final Leaderboard */}
+        {/* Final Leaderboard (copied from game.tsx) */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex-row items-center">
               Final Leaderboard
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="gap-2">
             {sortedPlayers.map((player, index) => (
-              <LeaderboardItem
+              <View
                 key={player.username}
-                player={player}
-                rank={index + 1}
-                delay={300 + index * 150}
-              />
-            ))}
-          </CardContent>
-        </Card>
+                className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
+              >
+                {/* Rank */}
+                {index < 3 ? (
+                  <View
+                    className={`w-8 h-8 items-center justify-center rounded-full ${rankColors[index]}`}
+                  >
+                    <Trophy size={16} color="#fff" />
+                  </View>
+                ) : (
+                  <View className="w-8 h-8 items-center justify-center rounded-full bg-muted">
+                    <Text className="text-sm font-bold text-secondary">
+                      {index + 1}
+                    </Text>
+                  </View>
+                )}
 
-        {/* Performance Chart Visualization */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Performance Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sortedPlayers.map((player, index) => (
-              <View key={player.username} className="mb-4">
-                <View className="flex-row justify-between mb-2">
-                  <Text className="font-medium">{player.username}</Text>
-                  <Text className="text-muted-foreground">
-                    {player.tokens} pts
+                {/* Name + Points */}
+                <View className="flex-1 flex-row justify-between ml-4">
+                  <Text className="text-base font-medium text-foreground">
+                    {player.username}
+                  </Text>
+                  <Text className="text-base font-semibold text-foreground">
+                    {player.tokens}
                   </Text>
                 </View>
-                <PerformanceBar
-                  value={player.tokens}
-                  maxValue={maxPoints}
-                  color={
-                    index === 0
-                      ? "bg-yellow-500"
-                      : index === 1
-                        ? "bg-gray-400"
-                        : index === 2
-                          ? "bg-orange-600"
-                          : "bg-blue-500"
-                  }
-                  delay={1200 + index * 100}
-                />
               </View>
             ))}
           </CardContent>

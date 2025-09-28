@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter, usePathname } from "expo-router";
 import { View, Image, BackHandler } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -32,12 +32,13 @@ export default function Game() {
     }, [handleBack])
   );
 
-  // 👇 NEW: auto-navigate when a question appears
+  const pathname = usePathname();
+
   useEffect(() => {
-    if (currentQuestion) {
+    if (pathname === "/game" && currentQuestion) {
       router.push("/question");
     }
-  }, [currentQuestion, router]);
+  }, [currentQuestion, pathname, router]);
 
   const formatDate = () =>
     new Date().toLocaleDateString("en-US", {
@@ -205,7 +206,9 @@ export default function Game() {
         <Text>Start Question</Text>
       </Button>
       <Button
-        onPress={() => router.push("/recap")}
+        onPress={() => {
+          router.push("/recap")
+        }}
         className="w-full -mt-2 mb-16"
         variant="ghost"
       >
