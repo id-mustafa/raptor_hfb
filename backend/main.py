@@ -60,43 +60,19 @@ if os.getenv("ALLOWED_ORIGINS"):
 app.add_middleware(GZipMiddleware)
 app.add_middleware(
     CORSMiddleware,
-<<<<<<< HEAD
-    allow_origins=[
-        "http://localhost:4400",
-        "http://localhost:4401",
-        "http://localhost:8081",
-        "http://localhost:19006",
-        "http://127.0.0.1:4400",
-        "http://127.0.0.1:4401",
-    ],
-=======
+    # allow_origins=[
+    #     "http://localhost:4400",
+    #     "http://localhost:4401",
+    #     "http://localhost:8081",
+    #     "http://localhost:19006",
+    #     "http://127.0.0.1:4400",
+    #     "http://127.0.0.1:4401",
+    # ],
     allow_origins=allowed_origins,
->>>>>>> 7a7c3df (Test deploy)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    # Import models to register them with SQLModel's metadata
-    from .models.Player import Player
-    from .models.game import Game
-    from .models.bet import Bet
-    from .models.question import Question
-    from .models.PlayStatsData import PlayStatsData
-    from .models.PlayData import PlayData
-    from .models.ScoreData import ScoreData
-    from .models.GameData import GameData
-    from .models.user import User
-    from .models.usertofriend import UserToFriend
-    from .models.room import Room
-    from .models.QuarterData import QuarterData
-    from .models.QuestionResolution import QuestionResolution
-    from .models.PlayerMetricType import PlayerMetricType   
-
-    SQLModel.metadata.create_all(engine)
 
 # ! Plug in each separate API file here (make sure to import above)
 # feature_apis = [team, auth, question, docs, submission, session_obj, problem, scores]

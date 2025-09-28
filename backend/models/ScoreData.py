@@ -1,5 +1,6 @@
 from sqlmodel import Field, SQLModel
 from typing import Optional
+from sqlalchemy import Column, JSON
 from datetime import datetime
 
 
@@ -138,7 +139,7 @@ class ScoreData(SQLModel, table=True):
     away_timeouts: Optional[int] = Field(default=None, alias="AwayTimeouts")
     attendance: Optional[int] = Field(default=None, alias="Attendance")
 
-    # Stadium details (nested object - stored as JSON or separate table)
-    stadium_details: Optional[StadiumDetails] = Field(
-        default=None, alias="StadiumDetails"
+    # Stadium details (stored as JSON to avoid nested model mapping issue)
+    stadium_details: Optional[dict] = Field(  # type: ignore[assignment]
+        default=None, alias="StadiumDetails", sa_column=Column(JSON)
     )
