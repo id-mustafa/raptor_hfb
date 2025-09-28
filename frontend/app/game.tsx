@@ -15,7 +15,7 @@ import playByPlay from "@/assets/play-by-play.json";
 
 export default function Game() {
   const router = useRouter();
-  const { currentRoomUsers, gameStartTime } = useAuth();
+  const { currentRoomUsers, gameStartTime, currentQuestion } = useAuth();
 
   const handleBack = useCallback(() => {
     router.push("/home");
@@ -31,6 +31,13 @@ export default function Game() {
       return () => subscription.remove();
     }, [handleBack])
   );
+
+  // 👇 NEW: auto-navigate when a question appears
+  useEffect(() => {
+    if (currentQuestion) {
+      router.push("/question");
+    }
+  }, [currentQuestion, router]);
 
   const formatDate = () =>
     new Date().toLocaleDateString("en-US", {
@@ -86,24 +93,6 @@ export default function Game() {
 
     updateElapsed();
     const id = setInterval(updateElapsed, 1000);
-
-    return () => clearInterval(id);
-  }, [gameStartTime]);
-
-  useEffect(() => {
-    if (!gameStartTime) return;
-
-    const updateElapsed = () => {
-      const now = new Date();
-      const diffMs = now.getTime() - new Date(gameStartTime).getTime();
-      const minutes = Math.floor(diffMs / 60000);
-      const seconds = Math.floor((diffMs % 60000) / 1000);
-      setElapsed(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-    };
-
-    updateElapsed();
-    const id = setInterval(updateElapsed, 1000);
-
     return () => clearInterval(id);
   }, [gameStartTime]);
 
@@ -131,11 +120,9 @@ export default function Game() {
                   <>
                     <Text className="text-xs text-green-500">{elapsed}</Text>
                     <View className="w-1.5 h-1.5 rounded-full bg-green-500 ml-1 mr-2" />
-
                   </>
                 )}
-                <Text className="text-xs text-secondary">January 23rd, 2025</Text>
-
+                <Text className="text-xs text-secondary">{formatDate()}</Text>
               </View>
             </View>
           ),

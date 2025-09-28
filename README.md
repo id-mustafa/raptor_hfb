@@ -1,4 +1,4 @@
-### Raptor HFB
+### RexBets
 
 Crazy good bets (in real time high frequency format)
 

@@ -21,14 +21,14 @@ import { THEME } from '@/lib/theme';
 import { ReText } from 'react-native-redash';
 import { useAuth } from '@/utils/AuthProvider';
 
-const PREP_DURATION = 3500; // todo: change to 5000 for prod
-const QUESTION_DURATION = 7000; // todo: change to 20000 for prod
+const PREP_DURATION = 3500;     // todo: 5000 for prod
+const QUESTION_DURATION = 7000; // todo: 20000 for prod
 
 export default function Question() {
   const router = useRouter();
 
   // Timeout manager
-  const timeoutsRef = useRef<number[]>([]);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const addTimeout = (fn: () => void, delay: number) => {
     const id = setTimeout(fn, delay);
     timeoutsRef.current.push(id);
@@ -67,13 +67,12 @@ export default function Question() {
   const [showContent, setShowContent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Use a ref to track the latest selectedIndex for the timeout
   const selectedIndexRef = useRef(selectedIndex);
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
   }, [selectedIndex]);
 
-  const { points } = useAuth();
+  const { points, currentQuestion, options, updateUserTokens, username, correctAnswer } = useAuth();
 
   const sliderValue = useSharedValue(Math.min(10, points));
   const sliderMin = useSharedValue(0);
@@ -86,9 +85,7 @@ export default function Question() {
 
   const animatedWagerLineStyle = useAnimatedStyle(() => {
     const scale = interpolate(isDragging.value, [0, 1], [1, 1.10]);
-    return {
-      transform: [{ scale }],
-    };
+    return { transform: [{ scale }] };
   });
 
   const animatedReTextStyle = useAnimatedStyle(() => {
@@ -103,6 +100,34 @@ export default function Question() {
       fontSize: 32,
     };
   });
+
+  // Submit bet + navigate
+  const submitAndNavigate = async () => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+    clearAllTimeouts();
+
+    const finalIndex = selectedIndexRef.current;
+    const betAmount = Math.round(sliderValue.value);
+    const oldPoints = points; // capture before update
+
+    if (username && finalIndex !== null && betAmount > 0) {
+      try {
+        await updateUserTokens(username, finalIndex === correctAnswer ? points + betAmount : points - betAmount);
+      } catch (err) {
+        console.error("Failed to place bet", err);
+      }
+    }
+
+    router.push({
+      pathname: '/answer',
+      params: {
+        selection: finalIndex !== null ? finalIndex.toString() : undefined,
+        bet: betAmount > 0 ? betAmount.toString() : undefined,
+        oldPoints: oldPoints.toString(),
+      },
+    });
+  };
 
   useEffect(() => {
     revealProgress.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) });
@@ -122,34 +147,15 @@ export default function Question() {
       fadeContent.value = withTiming(1, { duration: 200 });
 
       addTimeout(() => {
-        if (hasNavigated.current) return;
-        hasNavigated.current = true;
-
-        const finalIndex = selectedIndexRef.current;
-        if (finalIndex !== null) {
-          router.push({
-            pathname: '/answer',
-            params: {
-              selection: finalIndex?.toString() ?? undefined,
-              bet: Math.round(sliderValue.value).toString(),
-            },
-          });
-        } else {
-          router.push('/answer');
-        }
+        runOnJS(submitAndNavigate)();
       }, QUESTION_DURATION);
     }, PREP_DURATION + 100);
 
-    return () => {
-      clearAllTimeouts();
-    };
+    return () => clearAllTimeouts();
   }, []);
 
   const handleManualSubmit = () => {
-    if (hasNavigated.current) return;
-    hasNavigated.current = true;
-    clearAllTimeouts();
-    router.push('/answer');
+    submitAndNavigate();
   };
 
   const circleStyle = useAnimatedStyle(() => ({
@@ -172,47 +178,42 @@ export default function Question() {
           Get Ready
         </Animated.Text>
       </Animated.View>
+
       {showContent && (
         <Animated.View className="flex-1 items-center justify-center gap-4 p-4" style={contentStyle}>
           <Timer duration={QUESTION_DURATION} />
+
           <Text className="text-2xl text-center text-secondary-foreground my-8">
-            How many points will LeBron James score in the third quarter?
+            {currentQuestion ?? "No question available"}
           </Text>
+
+          {/* answers */}
           <View className="w-full justify-center gap-4 flex-col">
-            <View className="flex-row w-full justify-center gap-4">
-              <SelectableCard
-                text="0-5"
-                selected={selectedIndex === 0}
-                select={() => setSelectedIndex(0)}
-                deselect={() => setSelectedIndex(null)}
-              />
-              <SelectableCard
-                text="6-10"
-                selected={selectedIndex === 1}
-                select={() => setSelectedIndex(1)}
-                deselect={() => setSelectedIndex(null)}
-              />
-            </View>
-            <View className="flex-row w-full justify-center gap-4">
-              <SelectableCard
-                text="11-15"
-                selected={selectedIndex === 2}
-                select={() => setSelectedIndex(2)}
-                deselect={() => setSelectedIndex(null)}
-              />
-              <SelectableCard
-                text="16+"
-                selected={selectedIndex === 3}
-                select={() => setSelectedIndex(3)}
-                deselect={() => setSelectedIndex(null)}
-              />
-            </View>
+            {[0, 1].map((row) => (
+              <View key={row} className="flex-row w-full justify-center gap-4">
+                {options.slice(row * 2, row * 2 + 2).map((opt, idx) => {
+                  const optionIndex = row * 2 + idx;
+                  return (
+                    <SelectableCard
+                      key={optionIndex}
+                      text={opt}
+                      selected={selectedIndex === optionIndex}
+                      select={() => setSelectedIndex(optionIndex)}
+                      deselect={() => setSelectedIndex(null)}
+                    />
+                  );
+                })}
+              </View>
+            ))}
           </View>
+
           <Button variant="ghost">
             <Text className="text-secondary text-lg" onPress={handleManualSubmit}>
               skip bet &rarr;
             </Text>
           </Button>
+
+          {/* wager slider */}
           <View className="w-full flex-col justify-center gap-4">
             <Animated.View style={animatedWagerLineStyle} className="flex flex-row items-center gap-1 justify-center">
               <Text className="text-lg mt-1">Wager</Text>
@@ -231,16 +232,10 @@ export default function Question() {
                 bubbleBackgroundColor: THEME.dark.primary,
               }}
               onSlidingStart={() => {
-                isDragging.value = withTiming(1, {
-                  duration: 150,
-                  easing: Easing.out(Easing.quad),
-                });
+                isDragging.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) });
               }}
               onSlidingComplete={() => {
-                isDragging.value = withTiming(0, {
-                  duration: 100,
-                  easing: Easing.out(Easing.quad),
-                });
+                isDragging.value = withTiming(0, { duration: 100, easing: Easing.out(Easing.quad) });
               }}
               renderThumb={() => <View className="w-7 h-7 rounded-full bg-primary " />}
               renderBubble={() => null}

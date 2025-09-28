@@ -30,28 +30,36 @@ export default function BetResult() {
         "hardwareBackPress",
         handleBack
       );
-
       return () => subscription.remove();
     }, [handleBack])
   );
 
-  const { points, setPoints } = useAuth();
-  const { selection, bet } = useLocalSearchParams<{ selection?: string; bet?: string }>();
-  const wager = bet ? parseInt(bet, 10) : 0;
+  const { setPoints, correctAnswer, options, setCurrentQuestion } = useAuth();
+  const { selection, bet, oldPoints } = useLocalSearchParams<{
+    selection?: string;
+    bet?: string;
+    oldPoints?: string;
+  }>();
 
-  const betWasPlaced = selection !== undefined && wager > 0;
+  const wager = bet ? parseInt(bet, 10) : 0;
+  const prevPoints = oldPoints ? parseInt(oldPoints, 10) : 0;
+  const chosenIndex = selection !== undefined ? parseInt(selection, 10) : null;
+
+  const betWasPlaced = chosenIndex !== null && wager > 0;
 
   const revealProgress = useSharedValue(0);
   const [phase, setPhase] = useState<'placed' | 'result'>('placed');
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
 
-  // 👇 New state for animated display
-  const animatedPoints = useSharedValue(points);
+  // Animate point updates
+  const animatedPoints = useSharedValue(prevPoints);
 
   useEffect(() => {
     if (betWasPlaced) {
       const timer = setTimeout(() => {
-        const chosenResult = selection === '3' ? 'correct' : 'incorrect';
+        const isCorrect =
+          correctAnswer !== null && chosenIndex === correctAnswer;
+        const chosenResult = isCorrect ? 'correct' : 'incorrect';
         setResult(chosenResult);
         setPhase('result');
 
@@ -62,19 +70,29 @@ export default function BetResult() {
           easing: Easing.out(Easing.cubic),
         });
 
-        const delta = chosenResult === 'correct' ? wager : -wager;
-        const targetPoints = points + delta;
+        const delta = isCorrect ? wager : -wager;
+        const targetPoints = prevPoints + delta;
         setPoints(targetPoints);
 
-        animatedPoints.value = withTiming(targetPoints, {
-          duration: 1000,
-          easing: Easing.out(Easing.exp),
-        });
+        setTimeout(() => {
+          animatedPoints.value = withTiming(targetPoints, {
+            duration: 2000,
+            easing: Easing.out(Easing.exp),
+          });
+        }, 500);
       }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [betWasPlaced, selection, wager, setPoints, revealProgress]);
+  }, [
+    betWasPlaced,
+    chosenIndex,
+    wager,
+    setPoints,
+    revealProgress,
+    correctAnswer,
+    prevPoints,
+  ]);
 
   const animatedText = useDerivedValue(() => {
     return Math.round(animatedPoints.value).toString();
@@ -111,14 +129,17 @@ export default function BetResult() {
               {betWasPlaced && (
                 <View className="flex flex-col items-center">
                   <View className="flex-row items-center gap-1">
-                    <Text className="text-4xl font-bold text-primary">{bet}</Text>
+                    <Text className="text-4xl font-bold text-primary">{wager}</Text>
                   </View>
                   <Text className="text-lg text-foreground">points</Text>
                 </View>
               )}
             </View>
             {!betWasPlaced && (
-              <Button className="w-64 mb-24" onPress={() => router.push('/game')} variant="secondary">
+              <Button className="w-64 mb-24" onPress={() => {
+                setCurrentQuestion(null);
+                router.push('/game')
+              }} variant="secondary">
                 <Text>Back to Game</Text>
               </Button>
             )}
@@ -135,14 +156,17 @@ export default function BetResult() {
                     text={animatedText}
                     style={{ fontSize: 32, fontWeight: "bold", color: THEME.dark.background }}
                   />
-                  <Text className={`text-lg text-background`}>
+                  <Text className="text-lg text-background">
                     {result === 'correct' ? `↑${wager}` : `↓${wager}`}
                   </Text>
                 </View>
                 <Text className="text-lg text-background">points</Text>
               </View>
             </View>
-            <Button className="w-64 mb-24" onPress={() => router.push('/game')} variant="dark">
+            <Button className="w-64 mb-24" onPress={() => {
+              setCurrentQuestion(null);
+              router.push('/game')
+            }} variant="dark">
               <Text>Back to Game</Text>
             </Button>
           </View>

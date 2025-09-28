@@ -1,4 +1,4 @@
-# Raptor HFB Deployment Guide - Render
+# RexBets Deployment Guide - Render
 
 ## Prerequisites
 

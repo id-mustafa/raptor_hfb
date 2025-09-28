@@ -162,7 +162,7 @@ const LeaderboardItem = ({
 
 export default function Recap() {
   const router = useRouter();
-  const { currentRoomUsers, gameStartTime } = useAuth();
+  const { currentRoomUsers, gameStartTime, questions } = useAuth();
 
   const [elapsed, setElapsed] = useState("");
 
@@ -313,7 +313,7 @@ export default function Recap() {
                 <Target size={16} color={THEME.dark.secondary} />
                 <Text className="ml-2 text-muted-foreground">Questions</Text>
               </View>
-              <Text className="font-semibold">--</Text>
+              <Text className="font-semibold">{questions.length}</Text>
             </View>
 
             <View className="flex-row items-center justify-between">

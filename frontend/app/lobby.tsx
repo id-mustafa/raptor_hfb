@@ -126,7 +126,16 @@ export default function Lobby() {
     }, [handleBack])
   );
 
-  const { currentRoomUsers, refresh, setGameStartTime } = useAuth();
+  const { currentRoomUsers, refresh, setGameStartTime, startQuestions, startGame, currentRoomId, rooms } = useAuth();
+
+  useEffect(() => {
+    if (!currentRoomId) return;
+    const room = rooms.find(r => r.id === currentRoomId);
+    if (room?.started_game) {
+      setGameStartTime(new Date());
+      router.push("/game");
+    }
+  }, [rooms, currentRoomId, router]);
 
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
@@ -300,7 +309,16 @@ export default function Lobby() {
           <Text className="font-normal">reset positions</Text>
         </Button>
 
-        <Button onPress={() => { setGameStartTime(new Date()); router.push("/game"); }} className="w-64 mb-20">
+        <Button
+          onPress={async () => {
+            if (!currentRoomId) return;
+            //await startGame(currentRoomId);
+            setGameStartTime(new Date());
+            startQuestions();
+            router.push("/game");
+          }}
+          className="w-64 mb-20"
+        >
           <Text>Start Game</Text>
         </Button>
       </View>
