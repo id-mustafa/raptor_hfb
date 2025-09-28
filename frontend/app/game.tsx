@@ -15,7 +15,7 @@ import playByPlay from "@/assets/play-by-play.json";
 
 export default function Game() {
   const router = useRouter();
-  const { currentRoomUsers, gameStartTime, currentQuestion } = useAuth();
+  const { currentRoomUsers, gameStartTime, currentQuestion, currentRoomId, toggleRoomReady } = useAuth();
 
   const handleBack = useCallback(() => {
     router.push("/home");
@@ -207,6 +207,9 @@ export default function Game() {
       </Button>
       <Button
         onPress={() => {
+          if (currentRoomId) {
+            toggleRoomReady(currentRoomId, false);
+          }
           router.push("/recap")
         }}
         className="w-full -mt-2 mb-16"

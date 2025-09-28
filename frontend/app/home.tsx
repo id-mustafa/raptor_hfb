@@ -6,6 +6,8 @@ import {
   RefreshControl,
   View,
   BackHandler,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -57,7 +59,6 @@ export default function Home() {
     friends,
     incomingRequests,
     rooms,
-    loading,
     error,
     refresh,
     acceptRequest,
@@ -68,6 +69,11 @@ export default function Home() {
   } = useAuth();
 
   const [newFriend, setNewFriend] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [joiningRoomId, setJoiningRoomId] = useState<number | null>(null);
+  const [processingReq, setProcessingReq] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(false);
 
   const handleSendRequest = async () => {
     if (!username || !newFriend.trim()) return;
@@ -84,13 +90,9 @@ export default function Home() {
   const dummyRequests = [{ username: "David" }, { username: "Eve" }];
   const dummyRooms: RoomLike[] = [{ id: 1, participants: [{ username: "Bob" }] }];
 
-  const effectiveFriends =  friends;
+  const effectiveFriends = friends;
   const effectiveRequests = incomingRequests;
   const effectiveRooms = dummyRooms;
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [joiningRoomId, setJoiningRoomId] = useState<number | null>(null);
-  const [processingReq, setProcessingReq] = useState<string | null>(null);
 
   const onRefresh = useCallback(async () => {
     if (USE_DUMMY_DATA) {
@@ -129,21 +131,20 @@ export default function Home() {
     return map;
   }, [effectiveRooms]);
 
-const handleJoinRoom = async (roomId: number|null) => {
-  if (!roomId) return;
-  if (USE_DUMMY_DATA) return;
-  if (!username) return;
-  try {
-    setJoiningRoomId(roomId);
-    const ok = await joinRoomForUser(username, roomId);
-    if (ok) {
-      router.push("/lobby");
+  const handleJoinRoom = async (roomId: number | null) => {
+    if (!roomId) return;
+    if (USE_DUMMY_DATA) return;
+    if (!username) return;
+    try {
+      setJoiningRoomId(roomId);
+      const ok = await joinRoomForUser(username, roomId);
+      if (ok) {
+        router.push("/lobby");
+      }
+    } finally {
+      setJoiningRoomId(null);
     }
-  } finally {
-    setJoiningRoomId(null);
-  }
-};
-
+  };
 
   const handleAccept = async (fromUser: string) => {
     if (USE_DUMMY_DATA) return;
@@ -176,128 +177,149 @@ const handleJoinRoom = async (roomId: number|null) => {
     return a.username.localeCompare(b.username);
   });
 
+  const showSpinner = loading || joiningRoomId !== null || processingReq !== null;
+
   return (
-    <KeyboardAwareScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      keyboardShouldPersistTaps="handled"
-      enableOnAndroid
-      extraScrollHeight={Platform.OS === "ios" ? 64 : 80}
-    >
-      <View className="flex-1 items-center gap-6 p-4 flex flex-col">
-        <Stack.Screen
-          options={{
-            title: `Welcome${username ? `, ${username}` : ""}`,
-            headerLeft: () => (
-              <Pressable onPress={() => router.push("/")}>
-                <ChevronLeft size={24} color={THEME.dark.secondary} />
-              </Pressable>
-            ),
-          }}
-        />
+    <>
+      <KeyboardAwareScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={Platform.OS === "ios" ? 64 : 80}
+      >
+        <View className="flex-1 items-center gap-6 p-4 flex flex-col">
+          <Stack.Screen
+            options={{
+              title: `Welcome${username ? `, ${username}` : ""}`,
+              headerLeft: () => (
+                <Pressable onPress={() => router.push("/")}>
+                  <ChevronLeft size={24} color={THEME.dark.secondary} />
+                </Pressable>
+              ),
+            }}
+          />
 
-        {error && !USE_DUMMY_DATA && <Text className="text-destructive">{error}</Text>}
+          {error && !USE_DUMMY_DATA && <Text className="text-destructive">{error}</Text>}
 
-        <CreateLobbyCard
-          navigateLobby={async () => {
-            if (!username) return;
-            try {
-              const room = await createRoomForUser(username);
-              router.push("/lobby");
-            } catch (err) {
-              console.error("Failed to create room", err);
-            }
-          }}
-        />
+          <CreateLobbyCard
+            navigateLobby={async () => {
+              if (!username) return;
+              try {
+                setLoading(true);
+                const room = await createRoomForUser(username);
+                router.push("/lobby");
+              } catch (err) {
+                console.error("Failed to create room", err);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
 
+          {/* Friends & Rooms */}
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Your Friends</CardTitle>
+            </CardHeader>
+            <CardContent className="gap-2">
+              {effectiveFriends && effectiveFriends.length === 0 ? (
+                <Text className="text-muted-foreground">No friends yet</Text>
+              ) : (
+                sortedFriends.map((friend) => {
+                  return (
+                    <Pressable
+                      key={friend.username}
+                      className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
+                      onPress={friend.room_id ? () => handleJoinRoom(friend.room_id) : undefined}
+                    >
+                      <Text className="text-base text-foreground">{friend.username}</Text>
+                      {friend.room_id ? (
+                        <Text className="text-sm font-medium text-green-600">
+                          {joiningRoomId === friend.room_id ? "Joining…" : `In Room #${friend.room_id}`}
+                        </Text>
+                      ) : (
+                        <Text className="text-sm text-secondary">Offline</Text>
+                      )}
+                    </Pressable>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Friends & Rooms */}
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Your Friends</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2">
-            {effectiveFriends && effectiveFriends.length === 0 ? (
-              <Text className="text-muted-foreground">No friends yet</Text>
-            ) : (
-              sortedFriends.map((friend) => {
-                return (
-                  <Pressable
-                    key={friend.username}
-                    className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
-                    onPress={friend.room_id ? () => handleJoinRoom(friend.room_id) : undefined}
-                  >
-                    <Text className="text-base text-foreground">{friend.username}</Text>
-                    {friend.room_id ? (
-                      <Text className="text-sm font-medium text-green-600">
-                        {joiningRoomId === friend.room_id ? "Joining…" : `In Room #${friend.room_id}`}
-                      </Text>
-                    ) : (
-                      <Text className="text-sm text-secondary">Offline</Text>
-                    )}
-                  </Pressable>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Friend Requests */}
-        <Card className="w-full max-w-md mb-12">
-          <CardHeader>
-            <CardTitle>Friend Requests</CardTitle>
-          </CardHeader>
-          <CardContent className="gap-2">
-            <View className="flex-row items-center gap-2 mb-2">
-              <Input
-                value={newFriend}
-                onChangeText={setNewFriend}
-                placeholder="Enter username"
-                className="flex-1 border border-muted rounded-md px-3 py-2 text-foreground"
-                placeholderTextColor="#888"
-              />
-              <Button onPress={handleSendRequest}>
-                <Text>Send</Text>
-              </Button>
-            </View>
-            {effectiveRequests.length === 0 ? (
-              <Text className="text-muted-foreground">No pending requests</Text>
-            ) : (
-              effectiveRequests.map((req) => {
-                const isAccepting = processingReq === `${req.username}-accept`;
-                const isDeclining = processingReq === `${req.username}-decline`;
-                return (
-                  <View
-                    key={req.username}
-                    className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
-                  >
-                    <Text className="text-base text-foreground">{req.username}</Text>
-                    <View className="flex-row">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onPress={() => handleAccept(req.username)}
-                        disabled={isAccepting || isDeclining}
-                      >
-                        {isAccepting ? <Text>…</Text> : <Icon as={Check} />}
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onPress={() => handleDecline(req.username)}
-                        disabled={isAccepting || isDeclining}
-                      >
-                        {isDeclining ? <Text>…</Text> : <Icon as={X} />}
-                      </Button>
+          {/* Friend Requests */}
+          <Card className="w-full max-w-md mb-12">
+            <CardHeader>
+              <CardTitle>Friend Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="gap-2">
+              <View className="flex-row items-center gap-2 mb-2">
+                <Input
+                  value={newFriend}
+                  onChangeText={setNewFriend}
+                  placeholder="Enter username"
+                  className="flex-1 border border-muted rounded-md px-3 py-2 text-foreground"
+                  placeholderTextColor="#888"
+                />
+                <Button onPress={handleSendRequest}>
+                  <Text>Send</Text>
+                </Button>
+              </View>
+              {effectiveRequests.length === 0 ? (
+                <Text className="text-muted-foreground">No pending requests</Text>
+              ) : (
+                effectiveRequests.map((req) => {
+                  const isAccepting = processingReq === `${req.username}-accept`;
+                  const isDeclining = processingReq === `${req.username}-decline`;
+                  return (
+                    <View
+                      key={req.username}
+                      className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
+                    >
+                      <Text className="text-base text-foreground">{req.username}</Text>
+                      <View className="flex-row">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onPress={() => handleAccept(req.username)}
+                          disabled={isAccepting || isDeclining}
+                        >
+                          {isAccepting ? <Text>…</Text> : <Icon as={Check} />}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onPress={() => handleDecline(req.username)}
+                          disabled={isAccepting || isDeclining}
+                        >
+                          {isDeclining ? <Text>…</Text> : <Icon as={X} />}
+                        </Button>
+                      </View>
                     </View>
-                  </View>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-      </View>
-    </KeyboardAwareScrollView>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        </View>
+      </KeyboardAwareScrollView>
+
+      {/* Fullscreen Spinner Overlay */}
+      <Modal transparent visible={showSpinner} animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: "#fff", marginTop: 12, fontSize: 22 }}>Creating Room...</Text>
+        </View>
+      </Modal>
+    </>
   );
 }

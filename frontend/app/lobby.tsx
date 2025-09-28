@@ -21,6 +21,7 @@ import { triggerSelectionHaptic } from "@/utils/Vibration";
 import { THEME } from "@/lib/theme";
 import { BackHandler } from "react-native";
 import { useAuth } from "@/utils/AuthProvider";
+import { toggleRoomReady } from "@/api/room";
 
 const AVATAR_SIZE = 135;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
@@ -126,16 +127,18 @@ export default function Lobby() {
     }, [handleBack])
   );
 
-  const { currentRoomUsers, refresh, setGameStartTime, startQuestions, startGame, currentRoomId, rooms } = useAuth();
+  const { currentRoomUsers, refresh, setGameStartTime, startQuestions, startGame, currentRoomId, rooms, hasNavigatedToGame, setHasNavigatedToGame } = useAuth();
 
   useEffect(() => {
-    if (!currentRoomId) return;
+    if (!currentRoomId || hasNavigatedToGame) return;
     const room = rooms.find(r => r.id === currentRoomId);
-    if (room?.started_game) {
+    if (room?.started) {
       setGameStartTime(new Date());
+      setHasNavigatedToGame(true);
+      startQuestions();
       router.push("/game");
     }
-  }, [rooms, currentRoomId, router]);
+  }, [rooms, currentRoomId, router, setGameStartTime, hasNavigatedToGame, setHasNavigatedToGame]);
 
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
@@ -312,9 +315,10 @@ export default function Lobby() {
         <Button
           onPress={async () => {
             if (!currentRoomId) return;
-            //await startGame(currentRoomId);
+            startGame(currentRoomId);
             setGameStartTime(new Date());
             startQuestions();
+            toggleRoomReady(currentRoomId, true);
             router.push("/game");
           }}
           className="w-64 mb-20"

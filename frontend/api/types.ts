@@ -16,7 +16,7 @@ export interface FriendRequest {
 export interface Room {
   id: number;
   game_id: number;
-  started_game: boolean;
+  started: boolean;
 }
 
 export type FriendList = User[];

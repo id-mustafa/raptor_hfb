@@ -24,6 +24,7 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   startGame as apiStartGame,
+  toggleRoomReady as apiToggleRoomReady,
   normalizeRawQuestion,
 } from "@/api";
 import {
@@ -33,7 +34,6 @@ import {
 } from "@/api/questions";
 import type { RawQuestion, Room, User } from "@/api";
 
-// ✅ Question type based on backend
 type Question = {
   id: number;
   question_text: string;
@@ -41,7 +41,7 @@ type Question = {
   option_2: string;
   option_3: string;
   option_4: string;
-  correct_answer: number; // Backend: likely 1–4, so we normalize to 0–3
+  correct_answer: number;
 };
 
 type AuthContextType = {
@@ -74,14 +74,19 @@ type AuthContextType = {
   setGameStartTime: (time: Date | null) => void;
   setCurrentQuestion: (question: string | null) => void;
   startGame: (roomId: number) => Promise<boolean>;
+  toggleRoomReady: (roomId: number, ready: boolean) => Promise<boolean>;
 
-  // ✅ Question-related state/methods
+  // ✅ New flag
+  hasNavigatedToGame: boolean;
+  setHasNavigatedToGame: (val: boolean) => void;
+
+  // Questions
   questions: Question[];
   currentQuestion: string | null;
   options: string[];
   correctAnswer: number | null;
   startQuestions: () => Promise<void>;
-  updateUserTokens: (username: string, tokens: number) => Promise<void>; // fixed
+  updateUserTokens: (username: string, tokens: number) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,8 +110,7 @@ const avatars = [
   require("@/assets/images/avatar5.jpg"),
 ];
 
-const POLLING_INTERVAL = 5000; // 5 seconds
-
+const POLLING_INTERVAL = 5000;
 const DEFAULT_POINTS = 200;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -123,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPolling, setIsPolling] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
 
-  // ✅ New Question state
+  // ✅ New flag
+  const [hasNavigatedToGame, setHasNavigatedToGame] = useState(false);
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [options, setOptions] = useState<string[]>([]);
@@ -132,22 +138,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pollingIntervalRef = useRef<number | null>(null);
   const shouldPollRef = useRef(false);
 
-  // Helpers
   const assignAvatars = (users: User[]) =>
     users.map((u, index) => ({
       ...u,
       avatar: avatars[index % avatars.length],
     }));
 
-  const normalizeOptions = (q: Question): string[] => {
-    return [q.option_1, q.option_2, q.option_3, q.option_4];
-  };
+  const normalizeOptions = (q: Question): string[] => [
+    q.option_1,
+    q.option_2,
+    q.option_3,
+    q.option_4,
+  ];
 
-  const normalizeAnswer = (q: Question): number | null => {
-    return typeof q.correct_answer === "number" ? q.correct_answer - 1 : null;
-  };
+  const normalizeAnswer = (q: Question): number | null =>
+    typeof q.correct_answer === "number" ? q.correct_answer - 1 : null;
 
-  // Fetch all user/friends/rooms/questions
   const prevCountRef = useRef(0);
 
   const fetchAll = useCallback(
@@ -177,16 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRooms(roomList);
         setAllUsers(
           assignAvatars(
-            allUsersList.sort((a, b) => a.username.localeCompare(b.username)),
-          ),
+            allUsersList.sort((a, b) => a.username.localeCompare(b.username))
+          )
         );
 
-        // ✅ only fetch questions if a valid room ID exists
         if (currentRoomId) {
           const rawQs = await getAllQuestions(currentRoomId.toString());
           setQuestions(rawQs.map(normalizeRawQuestion));
         } else {
-          setQuestions([]); // clear when no room
+          setQuestions([]);
         }
 
         setError(null);
@@ -196,38 +201,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           err instanceof ApiError
             ? err.message
             : err instanceof Error
-              ? err.message
-              : "Failed to reach the server";
+            ? err.message
+            : "Failed to reach the server";
         setError(message);
       } finally {
         if (!isPollingRequest) setLoading(false);
       }
     },
-    [currentRoomId],
+    [currentRoomId]
   );
 
-  const startGameHandler = useCallback(
-    async (roomId: number) => {
-      const success = await apiStartGame(roomId);
+  const startGameHandler = useCallback(async (roomId: number) => {
+    return await apiStartGame(roomId);
+  }, []);
+
+  const toggleRoomReadyHandler = useCallback(
+    async (roomId: number, ready: boolean) => {
+      const success = await apiToggleRoomReady(roomId, ready);
+      if (success && username) {
+        await fetchAll(username);
+      }
       return success;
     },
-    [username]
+    [username, fetchAll]
   );
 
   useEffect(() => {
     if (!questions || questions.length === 0) return;
-
     if (questions.length > prevCountRef.current) {
       const newQ = questions[questions.length - 1];
-      setCurrentQuestion(newQ.question_text); // ✅ correct property
+      setCurrentQuestion(newQ.question_text);
       setOptions(normalizeOptions(newQ));
       setCorrectAnswer(normalizeAnswer(newQ));
       prevCountRef.current = questions.length;
     }
-  }, [questions, setCurrentQuestion]);
+  }, [questions]);
 
   const fetchAllRef = useRef(fetchAll);
-  useEffect(() => { fetchAllRef.current = fetchAll; }, [fetchAll]);
+  useEffect(() => {
+    fetchAllRef.current = fetchAll;
+  }, [fetchAll]);
 
   const enablePolling = useCallback(() => {
     if (!username || pollingIntervalRef.current) return;
@@ -235,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsPolling(true);
     pollingIntervalRef.current = setInterval(() => {
       if (shouldPollRef.current && username) {
-        fetchAllRef.current(username, true); // always latest
+        fetchAllRef.current(username, true);
       }
     }, POLLING_INTERVAL);
   }, [username]);
@@ -271,23 +284,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enablePolling();
   }, [username, fetchAll, enablePolling, disablePolling]);
 
-  // Auth / friends / rooms handlers
   const handleSetUsername = useCallback((name: string | null) => setUsernameState(name), []);
-
-  const refresh = useCallback(async () => {
-    if (!username) return;
-    await fetchAll(username);
-  }, [username, fetchAll]);
+  const refresh = useCallback(async () => { if (username) await fetchAll(username); }, [username, fetchAll]);
 
   const createRoomForUser = useCallback(
     async (name: string) => {
       const room = await createRoom(name);
       if (username === name) {
         await fetchAll(name);
+        setHasNavigatedToGame(false); // reset flag
       }
       return room;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
   const joinRoomForUser = useCallback(
@@ -296,10 +305,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (success && username === name) {
         await fetchAll(name);
         setCurrentRoomId(roomId);
+        setHasNavigatedToGame(false); // reset flag
       }
       return success;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
   const leaveRoomForUser = useCallback(
@@ -308,41 +318,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (success && username === name) {
         await fetchAll(name);
         setCurrentRoomId(null);
+        setHasNavigatedToGame(false); // reset flag
       }
       return success;
     },
-    [fetchAll, username],
+    [fetchAll, username]
   );
 
-  const sendRequest = useCallback(
-    async (from: string, to: string) => {
-      await sendFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
-      }
-    },
-    [fetchAll, username],
-  );
+  const sendRequest = useCallback(async (from: string, to: string) => {
+    await sendFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
 
-  const acceptRequestHandler = useCallback(
-    async (from: string, to: string) => {
-      await acceptFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
-      }
-    },
-    [fetchAll, username],
-  );
+  const acceptRequestHandler = useCallback(async (from: string, to: string) => {
+    await acceptFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
 
-  const declineRequestHandler = useCallback(
-    async (from: string, to: string) => {
-      await declineFriendRequest(from, to);
-      if (username && (username === to || username === from)) {
-        await fetchAll(username);
-      }
-    },
-    [fetchAll, username],
-  );
+  const declineRequestHandler = useCallback(async (from: string, to: string) => {
+    await declineFriendRequest(from, to);
+    if (username && (username === to || username === from)) {
+      await fetchAll(username);
+    }
+  }, [fetchAll, username]);
 
   const startQuestionsHandler = useCallback(async () => {
     if (!currentRoomId) {
@@ -362,18 +364,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await apiStartQuestions(currentRoomId.toString());
-  }, [currentRoomId]);
+  }, [currentRoomId, currentRoomUsers]);
 
-  // ✅ Fixed updateUserTokens
-  const updateUserTokens = useCallback(
-    async (name: string, tokens: number) => {
-      await apiUpdateUserTokens(name, tokens);
-      if (username === name) {
-        setPoints(tokens); // update local state immediately
-      }
-    },
-    [username]
-  );
+  const updateUserTokens = useCallback(async (name: string, tokens: number) => {
+    await apiUpdateUserTokens(name, tokens);
+    if (username === name) {
+      setPoints(tokens);
+    }
+  }, [username]);
 
   const contextValue = useMemo(
     () => ({
@@ -404,8 +402,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPolling,
       gameStartTime,
       setGameStartTime,
-
-      // ✅ questions
       questions,
       currentQuestion,
       options,
@@ -413,7 +409,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       startQuestions: startQuestionsHandler,
       updateUserTokens,
       setCurrentQuestion,
-      startGame: startGameHandler
+      startGame: startGameHandler,
+      toggleRoomReady: toggleRoomReadyHandler,
+      hasNavigatedToGame,
+      setHasNavigatedToGame,
     }),
     [
       username,
@@ -449,7 +448,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateUserTokens,
       setCurrentQuestion,
       startGameHandler,
-    ],
+      toggleRoomReadyHandler,
+      hasNavigatedToGame,
+      setHasNavigatedToGame,
+    ]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
