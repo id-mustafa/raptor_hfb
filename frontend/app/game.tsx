@@ -1,5 +1,5 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { View, Image, Pressable, BackHandler } from "react-native";
+import { View, Image, BackHandler } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import {
@@ -8,11 +8,13 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 import { Trophy } from "lucide-react-native";
+import { useAuth } from "@/utils/AuthProvider";
 
 export default function Game() {
   const router = useRouter();
+  const { currentRoomUsers } = useAuth();
 
   const handleBack = useCallback(() => {
     router.push("/home");
@@ -25,20 +27,8 @@ export default function Game() {
         "hardwareBackPress",
         handleBack
       );
-
       return () => subscription.remove();
     }, [handleBack])
-  );
-
-  const players: any[] = useMemo(
-    () => [
-      { id: "1", name: "Alice", points: 50 },
-      { id: "2", name: "Bob", points: 30 },
-      { id: "3", name: "Charlie", points: 20 },
-      { id: "4", name: "David", points: 70 },
-      { id: "5", name: "Eve", points: 60 },
-    ],
-    []
   );
 
   const formatDate = () =>
@@ -66,14 +56,10 @@ export default function Game() {
                   </Text>
                 </View>
               </View>
-
               <Text className="text-xs text-secondary">{formatDate()}</Text>
-
             </View>
           ),
-          headerLeft: () => (
-            <View className="px-2" />
-          )
+          headerLeft: () => <View className="px-2" />,
         }}
       />
 
@@ -106,14 +92,14 @@ export default function Game() {
           <CardTitle>Party Leaderboard</CardTitle>
         </CardHeader>
         <CardContent className="gap-2">
-          {players
-            .sort((a, b) => b.points - a.points)
+          {currentRoomUsers
+            .sort((a, b) => b.tokens - a.tokens)
             .map((player, index) => (
               <View
-                key={player.id}
+                key={player.username}
                 className="flex-row items-center justify-between rounded-md bg-muted/20 px-4 py-2"
               >
-                {/* Rank: trophy for top 3, number otherwise */}
+                {/* Rank */}
                 {index < 3 ? (
                   <View
                     className={`w-8 h-8 items-center justify-center rounded-full ${rankColors[index]}`}
@@ -131,10 +117,10 @@ export default function Game() {
                 {/* Name + Points */}
                 <View className="flex-1 flex-row justify-between ml-4">
                   <Text className="text-base font-medium text-foreground">
-                    {player.name}
+                    {player.username}
                   </Text>
                   <Text className="text-base font-semibold text-foreground">
-                    {player.points}
+                    {player.tokens}
                   </Text>
                 </View>
               </View>
@@ -142,9 +128,11 @@ export default function Game() {
         </CardContent>
       </Card>
 
-
       {/* Actions */}
-      <Button onPress={() => router.push("/question")} className="w-full mt-auto">
+      <Button
+        onPress={() => router.push("/question")}
+        className="w-full mt-auto"
+      >
         <Text>Start Question</Text>
       </Button>
       <Button

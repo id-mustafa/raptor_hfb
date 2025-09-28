@@ -21,7 +21,7 @@ const HEIGHT_OFFSET = 200;
 
 type Player = {
   id: string;
-  name: string;
+  username: string;
   avatar: ImageSourcePropType;
 };
 
@@ -66,22 +66,14 @@ export default function Lobby() {
     }, [handleBack])
   );
 
-  const { currentRoomId, currentRoomUsers, refresh } = useAuth();
-
-  const players: Player[] = useMemo(() => {
-    return currentRoomUsers.map((u, idx) => ({
-      id: u.username,
-      name: u.username,
-      avatar: require("@/assets/images/avatar1.jpg"), 
-    }));
-  }, [currentRoomUsers]);
+  const { currentRoomUsers, refresh } = useAuth();
 
   // Physics + animation setup
   const engineRef = useRef(Matter.Engine.create());
   const bodiesRef = useRef<Record<string, Matter.Body>>({});
 
   const animatedPositions: Record<string, { x: SharedValue<number>; y: SharedValue<number> }> = Object.fromEntries(
-    players.map((p) => [p.id, { x: useSharedValue(0), y: useSharedValue(0) }])
+    currentRoomUsers.map((p) => [p.username, { x: useSharedValue(0), y: useSharedValue(0) }])
   );
 
   const draggedBodyId = useSharedValue<string | null>(null);
@@ -95,29 +87,29 @@ export default function Lobby() {
     const spacingX = 40;
     const spacingY = 50;
 
-    const rows = Math.ceil(players.length / cols);
+    const rows = Math.ceil(currentRoomUsers.length / cols);
     const totalHeight = rows * AVATAR_SIZE + (rows - 1) * spacingY;
     const startY = (containerHeight - totalHeight) / 2 + AVATAR_RADIUS;
 
-    players.forEach((p, index) => {
+    currentRoomUsers.forEach((p, index) => {
       const row = Math.floor(index / cols);
       const col = index % cols;
-      const numInRow = row === rows - 1 && players.length % cols !== 0 ? players.length % cols : cols;
+      const numInRow = row === rows - 1 && currentRoomUsers.length % cols !== 0 ? currentRoomUsers.length % cols : cols;
       const rowWidth = numInRow * AVATAR_SIZE + (numInRow - 1) * spacingX;
       const startX = (containerWidth - rowWidth) / 2 + AVATAR_RADIUS;
       const x = startX + col * (AVATAR_SIZE + spacingX);
       const y = startY + row * (AVATAR_SIZE + spacingY);
 
-      const body = bodiesRef.current[p.id];
+      const body = bodiesRef.current[p.username];
       if (body) {
         Matter.Body.setPosition(body, { x, y });
         Matter.Body.setVelocity(body, { x: 0, y: 0 });
         Matter.Body.setAngularVelocity(body, 0);
       }
-      animatedPositions[p.id].x.value = x - AVATAR_RADIUS;
-      animatedPositions[p.id].y.value = y - AVATAR_RADIUS;
+      animatedPositions[p.username].x.value = x - AVATAR_RADIUS;
+      animatedPositions[p.username].y.value = y - AVATAR_RADIUS;
     });
-  }, [players]);
+  }, [currentRoomUsers]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -136,9 +128,9 @@ export default function Lobby() {
     Matter.World.add(world, walls);
 
     const bodies: Record<string, Matter.Body> = {};
-    players.forEach((p) => {
+    currentRoomUsers.forEach((p) => {
       const body = Matter.Bodies.circle(0, 0, AVATAR_RADIUS, { restitution: 0.9, frictionAir: 0.03 });
-      bodies[p.id] = body;
+      bodies[p.username] = body;
       Matter.World.add(world, body);
     });
     bodiesRef.current = bodies;
@@ -161,11 +153,11 @@ export default function Lobby() {
           Matter.Body.setVelocity(body, { x: 0, y: 0 });
         }
       }
-      for (const p of players) {
-        const body = bodiesRef.current[p.id];
+      for (const p of currentRoomUsers) {
+        const body = bodiesRef.current[p.username];
         if (body) {
-          animatedPositions[p.id].x.value = body.position.x - AVATAR_RADIUS;
-          animatedPositions[p.id].y.value = body.position.y - AVATAR_RADIUS;
+          animatedPositions[p.username].x.value = body.position.x - AVATAR_RADIUS;
+          animatedPositions[p.username].y.value = body.position.y - AVATAR_RADIUS;
         }
       }
       frameId = requestAnimationFrame(gameLoop);
@@ -178,13 +170,13 @@ export default function Lobby() {
       Matter.World.clear(world, false);
       Matter.Engine.clear(engine);
     };
-  }, [setPlayers, players]);
+  }, [setPlayers, currentRoomUsers]);
 
   const onDragStart = useCallback((x: number, y: number) => {
-    for (const [id, body] of Object.entries(bodiesRef.current)) {
+    for (const [username, body] of Object.entries(bodiesRef.current)) {
       const dist = Math.hypot(x - body.position.x, y - body.position.y);
       if (dist <= (body.circleRadius ?? AVATAR_RADIUS)) {
-        draggedBodyId.value = id;
+        draggedBodyId.value = username;
         dragOffset.value = { dx: x - body.position.x, dy: y - body.position.y };
         break;
       }
@@ -228,7 +220,7 @@ export default function Lobby() {
     >
       <Stack.Screen
         options={{
-          title: `Lobby (${players.length} players)`,
+          title: `Lobby (${currentRoomUsers.length} players)`,
           headerLeft: () => (
             <Pressable onPress={() => router.push("/home")}>
               <ChevronLeft size={24} color={THEME.dark.secondary} />
@@ -244,11 +236,11 @@ export default function Lobby() {
 
       <GestureDetector gesture={panGesture}>
         <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - HEIGHT_OFFSET }}>
-          {players.map((p) => (
-            <PlayerAvatar key={p.id} position={animatedPositions[p.id]} source={p.avatar} />
+          {currentRoomUsers.map((p) => (
+            <PlayerAvatar key={p.username} position={animatedPositions[p.username]} source={p.avatar} />
           ))}
-          {players.map((p) => (
-            <PlayerName key={`${p.id}-name`} name={p.name} position={animatedPositions[p.id]} />
+          {currentRoomUsers.map((p) => (
+            <PlayerName key={`${p.username}-name`} name={p.username} position={animatedPositions[p.username]} />
           ))}
         </View>
       </GestureDetector>

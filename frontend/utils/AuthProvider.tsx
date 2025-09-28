@@ -6,7 +6,7 @@ import React, {
   useState,
   useEffect,
   ReactNode,
-} from 'react';
+} from "react";
 
 import {
   ApiError,
@@ -22,8 +22,8 @@ import {
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
-} from '@/api';
-import type { Room, User } from '@/api';
+} from "@/api";
+import type { Room, User } from "@/api";
 
 type AuthContextType = {
   username: string | null;
@@ -63,6 +63,16 @@ async function resolveUser(name: string) {
   }
 }
 
+// at the top of your AuthProvider file
+const avatars = [
+  require("@/assets/images/avatar1.jpg"),
+  require("@/assets/images/avatar2.jpg"),
+  require("@/assets/images/avatar3.jpg"),
+  require("@/assets/images/avatar4.jpg"),
+  require("@/assets/images/avatar5.jpg"),
+];
+
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsernameState] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -75,17 +85,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [currentRoomId, setCurrentRoomId] = useState<number | null>(null);
 
+  // helper to assign avatars
+const assignAvatars = (users: User[]) => {
+  return users.map((u, index) => ({
+    ...u,
+    avatar: avatars[index % avatars.length],
+  }));
+};
+
   const fetchAll = useCallback(
     async (name: string) => {
       setLoading(true);
       try {
-        const [resolvedUser, friendList, requestList, roomList, allUsersList] = await Promise.all([
-          resolveUser(name),
-          getFriends(name),
-          getIncomingRequests(name),
-          getRooms(),
-          getAllUsers(),
-        ]);
+        const [resolvedUser, friendList, requestList, roomList, allUsersList] =
+          await Promise.all([
+            resolveUser(name),
+            getFriends(name),
+            getIncomingRequests(name),
+            getRooms(),
+            getAllUsers(),
+          ]);
 
         setUser(resolvedUser);
         if (resolvedUser.room_id) {
@@ -94,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFriends(friendList);
         setIncomingRequests(requestList);
         setRooms(roomList);
-        setAllUsers(allUsersList);
+        setAllUsers(assignAvatars(allUsersList));
         setError(null);
       } catch (err) {
         console.error("Failed to fetch auth data", err);
@@ -102,8 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           err instanceof ApiError
             ? err.message
             : err instanceof Error
-              ? err.message
-              : "Failed to reach the server";
+            ? err.message
+            : "Failed to reach the server";
         setError(message);
       } finally {
         setLoading(false);
@@ -112,10 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // current room users — for now capped at 6
   const currentRoomUsers = useMemo(() => {
     if (!currentRoomId) return [];
-    return allUsers.filter((u, index) => u.room_id === currentRoomId);
+    return allUsers.filter((u) => u.room_id === currentRoomId);
   }, [allUsers, currentRoomId]);
 
   useEffect(() => {
@@ -254,13 +272,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return ctx;
 }

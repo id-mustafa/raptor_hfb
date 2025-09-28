@@ -1,7 +1,10 @@
+import { ImageSourcePropType } from "react-native";
+
 export interface User {
   username: string;
   room_id: number | null;
-  token: string;
+  tokens: number;
+  avatar: ImageSourcePropType;
 }
 
 export interface FriendRequest {
