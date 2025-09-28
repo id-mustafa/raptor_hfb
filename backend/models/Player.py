@@ -6,3 +6,5 @@ from typing import Optional
 class Player(SQLModel, table=True):
     id: int = Field(primary_key=True)
     name: str = Field()
+    game_id: int = Field(foreign_key="game.id")
+    team: str = Field()
