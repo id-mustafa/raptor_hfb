@@ -9,16 +9,16 @@ openapi_tags = {
     "description": "Routes used for user management",
 }
 
-api = APIRouter(prefix="/user", tags=openapi_tags)
+api = APIRouter(prefix="/user", tags=["Users"])
 
-@api.get("/{username}", response_model=User, tags=openapi_tags)
+@api.get("/{username}", response_model=User, tags=["Users"])
 async def get_user(username: str, user_svc: UserService = Depends(UserService)):
     return user_svc.get_user(username)
 
-@api.post("/{username}", response_model=User, tags=openapi_tags)
+@api.post("/{username}", response_model=User, tags=["Users"])
 async def create_user(username: str, user_svc: UserService = Depends(UserService)):
     return user_svc.create_user(username)
 
-@api.get("/", response_model=List[User], tags=openapi_tags)
+@api.get("/", response_model=List[User], tags=["Users"])
 async def get_all_users(user_svc: UserService = Depends(UserService)):
     return user_svc.get_all_users()

@@ -11,28 +11,28 @@ from ..services.room import RoomService
 from ..services.user import UserService
 
 openapi_tags = {
-    "name": "Users",
-    "description": "Routes used for user management",
+    "name": "Rooms",
+    "description": "Routes used for room management",
 }
-api = APIRouter(prefix="/room", tags=openapi_tags)
+api = APIRouter(prefix="/room", tags=["Rooms"])
 
-@api.get("", response_model=List[Room], tags=openapi_tags)
+@api.get("", response_model=List[Room], tags=["Rooms"])
 async def get_rooms(room_svc: RoomService = Depends(RoomService)):
     return room_svc.get_rooms()
 
-@api.post("/create", response_model=Room, tags=openapi_tags)
+@api.post("/create", response_model=Room, tags=["Rooms"])
 async def create_room(username: str, room_svc: RoomService = Depends(RoomService), user_svc: UserService = Depends(UserService)):
     room = room_svc.create_room(game_id=1)
     print(room.id)
     user_svc.update_user_room(username, room.id)
     return room
 
-@api.post("/join/{room_id}", response_model=bool, tags=openapi_tags)
+@api.post("/join/{room_id}", response_model=bool, tags=["Rooms"])
 async def join_room(username: str, room_id: int, room_svc: RoomService = Depends(RoomService), user_svc: UserService = Depends(UserService)):
     user_svc.update_user_room(username, room_id)
     return True
 
-@api.post("/leave/{username}", response_model=bool, tags=openapi_tags)
+@api.post("/leave/{username}", response_model=bool, tags=["Rooms"])
 async def leave_room(username: str, room_svc: RoomService = Depends(RoomService), user_svc: UserService = Depends(UserService)):
     user = user_svc.get_user(username)
     if user.room_id == None:
