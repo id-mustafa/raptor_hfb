@@ -1,94 +1,29 @@
 FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1
+WORKDIR /app
 
-ENV TZ=America/New_York
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-    && apt-get install --yes \
-    apt-transport-https \
-    build-essential \
-    ca-certificates \
-    curl \
-    debian-keyring \
-    debian-archive-keyring \
-    git \
-    gnupg \
-    locales \
-    software-properties-common \
-    sudo \
-    tzdata \
-    wget \
-    zsh \
-    cmake \
-    pkg-config \
-    libcairo2-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    ca-certificates curl git build-essential libpq-dev \
+    software-properties-common pkg-config libcairo2-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-# Install Caddy web server
-RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
-    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
-    && apt update \
-    && apt install caddy
+RUN add-apt-repository ppa:deadsnakes/ppa -y \
+ && apt-get update && apt-get install -y \
+    python3.12 python3.12-venv python3.12-dev \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
+ && python3 -m ensurepip \
+ && python3 -m pip install --upgrade pip setuptools wheel
 
-# Install Node.js 22 from https://github.com/nodesource
-ENV NODE_MAJOR=22
-RUN mkdir -p /etc/apt/keyrings \ 
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install nodejs -y \
-    && npm install -g npm@latest \
-    && rm -rf /var/lib/apt/lists/*
+# deps first
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Install Python 3.12
-RUN add-apt-repository ppa:deadsnakes/ppa \
-    && apt update \
-    && apt install --yes \
-    python3.12 \
-    libpq-dev \
-    python3.12-venv \
-    python3.12-dev \
-    && rm -rf /var/lib/apt/lists* \
-    && unlink /usr/bin/python3 \
-    && ln -s /usr/bin/python3.12 /usr/bin/python3
+# copy code as a package
+COPY backend/ /app/backend
+# ensure the package marker exists
+RUN [ -f /app/backend/__init__.py ] || touch /app/backend/__init__.py
 
-# Install pip
-RUN python3 -m ensurepip
-RUN python3 -m pip install --upgrade setuptools
-
-# Install Database Dependencies
-# COPY backend/requirements.txt /workspaces/raptor_hfb/backend/requirements.txt
-COPY . /workspaces/raptor_hfb
-WORKDIR /workspaces/raptor_hfb/backend
-RUN python3 -m pip install -r requirements.txt
-
-# Use a non-root user per https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
-# Add non-root user and add to sudoers
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/zsh \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-
-# Set code to default git commit editor
-RUN git config --system core.editor "code --wait"
-# Set Safe Directory
-RUN git config --system safe.directory '/workspaces/raptor_hfb'
-
-# Configure zsh
-USER $USERNAME
-ENV HOME=/home/$USERNAME
-
-# Add zsh theme with niceties
-RUN curl https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash - \
-    && sed -i 's/robbyrussell/kennethreitz/g' ~/.zshrc \
-    && echo 'export PATH=$PATH:$HOME/.local/bin' >>~/.zshrc
-
-# Set Locale for Functional Autocompletion in zsh
-RUN sudo locale-gen en_US.UTF-8
-
-EXPOSE 4400 4401 4402
-
-CMD ["honcho", "start"]
+# start
+ENV PORT=10000
+CMD ["sh","-c","uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
