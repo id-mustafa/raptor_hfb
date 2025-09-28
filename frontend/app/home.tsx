@@ -236,7 +236,7 @@ export default function Home() {
         </Card>
 
         {/* Friend Requests */}
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md mb-12">
           <CardHeader>
             <CardTitle>Friend Requests</CardTitle>
           </CardHeader>

@@ -21,13 +21,30 @@ import { THEME } from '@/lib/theme';
 import { ReText } from 'react-native-redash';
 import { useAuth } from '@/utils/AuthProvider';
 
-const PREP_DURATION = 1000; // todo: change to 5000 for prod
-const QUESTION_DURATION = 5000; // todo: change to 20000 for prod
+const PREP_DURATION = 3500; // todo: change to 5000 for prod
+const QUESTION_DURATION = 7000; // todo: change to 20000 for prod
 
 export default function Question() {
   const router = useRouter();
 
+  // Timeout manager
+  const timeoutsRef = useRef<number[]>([]);
+  const addTimeout = (fn: () => void, delay: number) => {
+    const id = setTimeout(fn, delay);
+    timeoutsRef.current.push(id);
+    return id;
+  };
+  const clearAllTimeouts = () => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+  };
+
+  const hasNavigated = useRef(false);
+
   const handleBack = useCallback(() => {
+    if (hasNavigated.current) return true;
+    hasNavigated.current = true;
+    clearAllTimeouts();
     router.push("/game");
     return true;
   }, [router]);
@@ -38,13 +55,9 @@ export default function Question() {
         "hardwareBackPress",
         handleBack
       );
-
       return () => subscription.remove();
     }, [handleBack])
   );
-
-  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasNavigated = useRef(false);
 
   // Animation state
   const revealProgress = useSharedValue(0);
@@ -59,7 +72,6 @@ export default function Question() {
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
   }, [selectedIndex]);
-
 
   const { points } = useAuth();
 
@@ -91,27 +103,29 @@ export default function Question() {
       fontSize: 32,
     };
   });
+
   useEffect(() => {
-    revealProgress.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.exp) });
-    const getReadyTimerFadeIn = setTimeout(() => {
-      fadeTimer.value = withTiming(1, { duration: 500 });
-    }, 500);
-    const accentFadeOut = setTimeout(() => {
+    revealProgress.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) });
+
+    addTimeout(() => {
+      fadeTimer.value = withTiming(1, { duration: 300 });
+    }, 700);
+
+    addTimeout(() => {
       fadeAccent.value = withTiming(0, { duration: 300 });
     }, PREP_DURATION);
 
     triggerVibration();
 
-    const contentFadeIn = setTimeout(() => {
+    addTimeout(() => {
       runOnJS(setShowContent)(true);
       fadeContent.value = withTiming(1, { duration: 200 });
 
-      navigationTimerRef.current = setTimeout(() => {
+      addTimeout(() => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;
 
         const finalIndex = selectedIndexRef.current;
-
         if (finalIndex !== null) {
           router.push({
             pathname: '/answer',
@@ -124,25 +138,17 @@ export default function Question() {
           router.push('/answer');
         }
       }, QUESTION_DURATION);
-    }, PREP_DURATION + 200);
+    }, PREP_DURATION + 100);
 
     return () => {
-      clearTimeout(getReadyTimerFadeIn);
-      clearTimeout(accentFadeOut);
-      clearTimeout(contentFadeIn);
-      if (navigationTimerRef.current) {
-        clearTimeout(navigationTimerRef.current);
-      }
+      clearAllTimeouts();
     };
   }, []);
 
   const handleManualSubmit = () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
-
-    if (navigationTimerRef.current) {
-      clearTimeout(navigationTimerRef.current);
-    }
+    clearAllTimeouts();
     router.push('/answer');
   };
 
@@ -202,7 +208,11 @@ export default function Question() {
               />
             </View>
           </View>
-          <Button variant="ghost"><Text className="text-secondary text-lg" onPress={handleManualSubmit}>skip bet &rarr;</Text></Button>
+          <Button variant="ghost">
+            <Text className="text-secondary text-lg" onPress={handleManualSubmit}>
+              skip bet &rarr;
+            </Text>
+          </Button>
           <View className="w-full flex-col justify-center gap-4">
             <Animated.View style={animatedWagerLineStyle} className="flex flex-row items-center gap-1 justify-center">
               <Text className="text-lg mt-1">Wager</Text>

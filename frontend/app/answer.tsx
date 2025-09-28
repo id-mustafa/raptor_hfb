@@ -59,7 +59,7 @@ export default function BetResult() {
 
         revealProgress.value = withTiming(1, {
           duration: 1200,
-          easing: Easing.out(Easing.exp),
+          easing: Easing.out(Easing.cubic),
         });
 
         const delta = chosenResult === 'correct' ? wager : -wager;

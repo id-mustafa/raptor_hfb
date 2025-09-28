@@ -8,7 +8,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import { AuthProvider } from '../utils/AuthProvider';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export {
@@ -24,27 +23,20 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <SafeAreaView
-            style={{ flex: 1, backgroundColor: NAV_THEME.dark.colors.background }}
-            edges={['top', 'bottom']}
-          >
-            <ThemeProvider value={NAV_THEME.dark}>
-              <StatusBar style="light" />
-              <Stack
-                screenOptions={{
-                  headerStyle: {
-                    backgroundColor: NAV_THEME.dark.colors.background,
-                  },
-                  headerTintColor: NAV_THEME.dark.colors.text,
-                  headerShadowVisible: false,
-                }}
-              />
-              <PortalHost />
-            </ThemeProvider>
-          </SafeAreaView>
-        </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: NAV_THEME.dark.colors.background }}>
+        <ThemeProvider value={NAV_THEME.dark}>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: NAV_THEME.dark.colors.background,
+              },
+              headerTintColor: NAV_THEME.dark.colors.text,
+              headerShadowVisible: false,
+            }}
+          />
+          <PortalHost />
+        </ThemeProvider>
       </GestureHandlerRootView>
     </AuthProvider>
   );

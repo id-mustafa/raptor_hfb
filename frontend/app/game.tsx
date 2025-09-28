@@ -78,7 +78,7 @@ export default function Game() {
       />
 
       {/* Game Overview */}
-      <Card>
+      <Card className="mt-4">
         <CardHeader>
           <CardTitle>Game Overview</CardTitle>
         </CardHeader>
@@ -149,7 +149,7 @@ export default function Game() {
       </Button>
       <Button
         onPress={() => router.push("/recap")}
-        className="w-full mb-2 -mt-2"
+        className="w-full -mt-2 mb-16"
         variant="ghost"
       >
         <Text>End Game</Text>
