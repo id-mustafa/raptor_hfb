@@ -75,8 +75,8 @@ class QuestionService:
         self.db.commit()
         return existing_question
 
-    def resolve_question(self, question_id: int, actual_value: float) -> Question:
-        """Resolve a question with the actual result and all associated bets - USER THIS API"""
+    def solve_question(self, question_id: int, actual_value: float) -> Question:
+        """Solve a question with the actual result and all associated bets - USER THIS API"""
         question = self.get_question(question_id)
         if not question:
             raise HTTPException(404, "Question not found")

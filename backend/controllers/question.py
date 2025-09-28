@@ -40,7 +40,7 @@ async def resolve_question(
     actual_value: float,
     question_svc: QuestionService = Depends(QuestionService),
 ):
-    return question_svc.resolve_question(question_id, actual_value)
+    return question_svc.solve_question(question_id, actual_value)
 
 
 @api.get("/{question_id}", response_model=Question, tags=["question"])
