@@ -15,7 +15,7 @@ import playByPlay from "@/assets/play-by-play.json";
 
 export default function Game() {
   const router = useRouter();
-  const { currentRoomUsers, gameStartTime, currentQuestion, currentRoomId, toggleRoomReady } = useAuth();
+  const { currentRoomUsers, gameStartTime, currentQuestion, currentRoomId, toggleRoomReady, setQuestions } = useAuth();
 
   const handleBack = useCallback(() => {
     router.replace("/home");
@@ -200,7 +200,20 @@ export default function Game() {
 
       {/* Actions */}
       <Button
-        onPress={() => router.replace("/question")}
+        onPress={() => {
+          setQuestions([
+            {
+              id: 0,
+              question_text: "Who will score the next goal?",
+              option_1: "LeBron James",
+              option_2: "Austin Reaves",
+              option_3: "Jason Tatum",
+              option_4: "Jaylen Brown",
+              correct_answer: 1,
+            }
+          ]);
+          router.replace("/question")
+        }}
         className="w-full mt-auto"
       >
         <Text>Start Question</Text>

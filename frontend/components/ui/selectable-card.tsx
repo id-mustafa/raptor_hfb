@@ -52,14 +52,14 @@ export function SelectableCard({
       <Animated.View
         style={animatedStyle}
         className={cn(
-          'flex-1 aspect-square flex flex-col items-center justify-center rounded-xl border shadow-sm shadow-black/5',
+          'flex-1 aspect-square flex flex-col items-center justify-center rounded-xl border shadow-sm shadow-black/5 p-5 text-center',
           selected ? 'bg-primary border-primary' : 'bg-background border-border',
           className
         )}
       >
         <Text
           className={cn(
-            'text-2xl font-semibold',
+            'text-2xl font-semibold text-center',
             selected ? 'text-background' : 'text-primary'
           )}
         >

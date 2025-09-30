@@ -87,6 +87,7 @@ type AuthContextType = {
   correctAnswer: number | null;
   startQuestions: () => Promise<void>;
   updateUserTokens: (username: string, tokens: number) => Promise<void>;
+  setQuestions: (qs: Question[]) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -305,13 +306,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const createRoomForUser = useCallback(
     async (name: string) => {
       const room = await createRoom(name);
-      if (username === name) {
-        await fetchAll(name);
-        setHasNavigatedToGame(false); // reset flag
-      }
       return room;
     },
-    [fetchAll, username]
+    [username]
   );
 
   const joinRoomForUser = useCallback(
@@ -435,6 +432,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toggleRoomReady: toggleRoomReadyHandler,
       hasNavigatedToGame,
       setHasNavigatedToGame,
+      setQuestions
     }),
     [
       username,
@@ -473,6 +471,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toggleRoomReadyHandler,
       hasNavigatedToGame,
       setHasNavigatedToGame,
+      setQuestions
     ]
   );
 
