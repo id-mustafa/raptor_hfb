@@ -1,7 +1,7 @@
 # Rex Bets
 *High-frequency social betting platform with real-time multiplayer gameplay*
 
-Rex Bets is a social betting application that brings competitive wagering to friend groups through real-time question-based betting sessions. Players join lobbies, answer rapid-fire questions about sports scenarios, and compete for points using a strategic multiplier system.
+Rex Bets is a social betting application that brings competitive wagering to friend groups through real-time question-based betting sessions. Players join lobbies, answer rapid-fire questions about sports scenarios, and compete for points using a strategic multiplier system. You can find out more about RexBets on [Devpost](https://devpost.com/software/raptor-bets).
 
 ## Tech Stack
 
